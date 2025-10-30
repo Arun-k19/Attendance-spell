@@ -1,46 +1,49 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
+import axios from "axios";
 
 function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState(""); // Admin / Staff / HOD
+  const [role, setRole] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const navigate = useNavigate();
   const [toastMsg, setToastMsg] = useState("");
+  const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    setTimeout(() => {
-      setLoading(false);
-      if (role === "Admin" && username === "admin" && password === "admin123") {
-        setToastMsg("Login Successful!");
-        navigate("/dashboard-admin");
-      } else if (role === "Staff" && username === "staff" && password === "staff123") {
-        setToastMsg("Login Successful!");
-        navigate("/dashboard-staff");
-      } else if (role === "HOD" && username === "hod" && password === "hod123") {
-        setToastMsg("Login Successful!");
-        navigate("/dashboard-hod");
-      } else {
-        setToastMsg("Invalid credentials!");
-      }
+    try {
+      const res = await axios.post("http://localhost:3001/api/login", {
+        username,
+        password,
+        role,
+      });
 
-      setTimeout(() => setToastMsg(""), 3000);
-    }, 1500);
+      setLoading(false);
+      setToastMsg(res.data.msg);
+
+      if (role === "Admin") navigate("/dashboard-admin");
+      else if (role === "Staff") navigate("/dashboard-staff");
+      else if (role === "HOD") navigate("/dashboard-hod");
+    } catch (err) {
+      setLoading(false);
+      setToastMsg("Invalid credentials!");
+    }
+
+    setTimeout(() => setToastMsg(""), 3000);
   };
 
   return (
     <div
       className="d-flex align-items-center justify-content-center"
       style={{
-        height: "100vh",
+        minHeight: "100vh",
         width: "100%",
-        backgroundImage: "url('/chenduran.png')", // College image path
+        backgroundImage: "url('/chenduran.png')",
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
@@ -48,7 +51,7 @@ function LoginPage() {
         overflow: "hidden",
       }}
     >
-      {/* Dark overlay for readability */}
+      {/* Dark overlay */}
       <div
         style={{
           position: "absolute",
@@ -56,42 +59,47 @@ function LoginPage() {
           left: 0,
           width: "100%",
           height: "100%",
-          backgroundColor: "rgba(0,0,0,0.4)",
+          backgroundColor: "rgba(0,0,0,0.5)",
           zIndex: 1,
         }}
       ></div>
 
+      {/* Login card */}
       <div
         className="card shadow-lg"
         style={{
-          width: "90%",
-          maxWidth: "400px",
-          padding: "2rem",
-          background: "rgba(255,255,255,0.2)",
-          backdropFilter: "blur(12px)",
-          borderRadius: "15px",
+          width: "40%", // 💻 Desktop width (40% of screen)
+          minWidth: "400px", // won't shrink below 400px
+          maxWidth: "600px", // won't exceed this
+          padding: "3rem",
+          background: "rgba(255,255,255,0.15)",
+          backdropFilter: "blur(15px)",
+          borderRadius: "25px",
+          border: "1px solid rgba(255,255,255,0.3)",
           position: "relative",
           zIndex: 2,
-          border: "1px solid rgba(255,255,255,0.3)",
+          transform: "scale(1.05)", // slight zoom
+          transition: "all 0.3s ease-in-out",
         }}
       >
-        {/* Logo & Title */}
         <div className="text-center mb-4">
           <img
             src="/chenduran.png"
             alt="Logo"
-            style={{ width: "80px", marginBottom: "10px" }}
+            style={{
+              width: "100px",
+              borderRadius: "10px",
+              marginBottom: "10px",
+            }}
           />
-          <h3 className="fw-bold text-white">College Attendance</h3>
+          <h2 className="fw-bold text-white">College Attendance</h2>
           <p className="text-light">Login to continue</p>
         </div>
 
         <form onSubmit={handleLogin}>
-          {/* Role Selection */}
           <div className="mb-3">
             <select
               className="form-select form-select-lg"
-              style={{ width: "100%" }}
               value={role}
               onChange={(e) => setRole(e.target.value)}
               required
@@ -103,7 +111,6 @@ function LoginPage() {
             </select>
           </div>
 
-          {/* Username */}
           <div className="mb-3">
             <input
               type="text"
@@ -115,7 +122,6 @@ function LoginPage() {
             />
           </div>
 
-          {/* Password */}
           <div className="mb-4 position-relative">
             <input
               type={showPassword ? "text" : "password"}
@@ -130,7 +136,7 @@ function LoginPage() {
               onClick={() => setShowPassword(!showPassword)}
               style={{
                 position: "absolute",
-                right: "10px",
+                right: "15px",
                 top: "50%",
                 transform: "translateY(-50%)",
                 border: "none",
@@ -144,28 +150,29 @@ function LoginPage() {
             </button>
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
-            className="btn w-100 fw-bold"
+            className="btn w-100 fw-bold py-2"
             style={{
               background: "linear-gradient(to right, #4e54c8, #8f94fb)",
               color: "#fff",
+              fontSize: "18px",
             }}
           >
             {loading ? "Loading..." : "Login"}
           </button>
         </form>
 
-        {/* Toast */}
         {toastMsg && (
           <div
             className="toast show position-absolute"
             style={{
-              bottom: "-50px",
+              bottom: "-60px",
               left: "50%",
               transform: "translateX(-50%)",
-              backgroundColor: toastMsg.includes("Invalid") ? "#dc3545" : "#28a745",
+              backgroundColor: toastMsg.includes("Invalid")
+                ? "#dc3545"
+                : "#28a745",
               color: "#fff",
               padding: "10px 20px",
               borderRadius: "8px",
