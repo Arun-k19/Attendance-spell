@@ -2,10 +2,10 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
-import LoginPage from "./pages/LoginPage";
-import AdminDashboard from "./pages/AdminDashboard";
-import StaffDashboard from "./pages/StaffDashboard";
-import HodDashboard from "./pages/hodDashboard";// ✅ fixed casing (file + component name should match exactly)
+import LoginPage from "./users/LoginPage";
+import AdminDashboard from "./users/AdminDashboard";
+import StaffDashboard from "./users/StaffDashboard";
+import HodDashboard from "./users/hodDashboard";// ✅ fixed casing (file + component name should match exactly)
 
 function App() {
   return (
