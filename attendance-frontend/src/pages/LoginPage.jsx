@@ -27,9 +27,11 @@ function LoginPage() {
       setToastMsg(res.data.msg);
 
       if (res.data.msg === "Login Successful") {
-        if (role === "Admin") navigate("/dashboard-admin");
-        else if (role === "Staff") navigate("/dashboard-staff");
-        else if (role === "HOD") navigate("/dashboard-hod");
+        setTimeout(() => {
+          if (role === "Admin") navigate("/dashboard-admin");
+          else if (role === "Staff") navigate("/dashboard-staff");
+          else if (role === "HOD") navigate("/dashboard-hod");
+        }, 1500);
       }
     } catch (err) {
       setLoading(false);
@@ -41,11 +43,9 @@ function LoginPage() {
 
   return (
     <div
-      className="d-flex align-items-center justify-content-center"
+      className="d-flex align-items-center justify-content-center vh-100"
       style={{
-        minHeight: "100vh",
-        width: "100%",
-        backgroundImage: "url('/chenduran.png')",
+        backgroundImage: "url('chenduran.png')",
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
@@ -53,6 +53,7 @@ function LoginPage() {
         overflow: "hidden",
       }}
     >
+      {/* Overlay */}
       <div
         style={{
           position: "absolute",
@@ -60,41 +61,44 @@ function LoginPage() {
           left: 0,
           width: "100%",
           height: "100%",
-          backgroundColor: "rgba(0,0,0,0.5)",
+          backgroundColor: "rgba(0, 0, 0, 0.6)",
           zIndex: 1,
         }}
       ></div>
 
+      {/* Login Card */}
       <div
-        className="card shadow-lg"
+        className="card text-center p-5 position-relative"
         style={{
-          width: "40%",
-          minWidth: "400px",
-          maxWidth: "600px",
-          padding: "3rem",
-          background: "rgba(255,255,255,0.15)",
-          backdropFilter: "blur(15px)",
+          width: "90%",
+          maxWidth: "500px",
+          background: "rgba(255, 255, 255, 0.1)",
+          backdropFilter: "blur(12px)",
+          border: "1px solid rgba(255, 255, 255, 0.3)",
           borderRadius: "25px",
-          border: "1px solid rgba(255,255,255,0.3)",
-          position: "relative",
           zIndex: 2,
-          transform: "scale(1.05)",
-          transition: "all 0.3s ease-in-out",
+          transform: "translateY(0)",
+          animation: "floatUp 0.8s ease",
         }}
       >
-        <div className="text-center mb-4">
-          <img
-            src="/chenduran.png"
-            alt="Logo"
-            style={{
-              width: "100px",
-              borderRadius: "10px",
-              marginBottom: "10px",
-            }}
-          />
-          <h2 className="fw-bold text-white">College Attendance</h2>
-          <p className="text-light">Login to continue</p>
-        </div>
+        {/* Logo */}
+        <img
+          src="public\chendhuran-logo.png"
+          alt="College Logo"
+          className="mb-3 mx-auto d-block"
+          style={{
+            width: "100px",
+            borderRadius: "10px",
+          }}
+        />
+
+        <h2
+          className="fw-bold text-white mb-2"
+        >
+          College Attendance
+        </h2>
+
+        <p className="text-light mb-4">Login to continue</p>
 
         <form onSubmit={handleLogin}>
           <div className="mb-3">
@@ -103,6 +107,10 @@ function LoginPage() {
               value={role}
               onChange={(e) => setRole(e.target.value)}
               required
+              style={{
+                backgroundColor: "rgba(255,255,255,0.85)",
+                borderRadius: "12px",
+              }}
             >
               <option value="">Select Role</option>
               <option>Admin</option>
@@ -119,6 +127,10 @@ function LoginPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
+              style={{
+                backgroundColor: "rgba(255,255,255,0.85)",
+                borderRadius: "12px",
+              }}
             />
           </div>
 
@@ -130,20 +142,20 @@ function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              style={{
+                backgroundColor: "rgba(255,255,255,0.85)",
+                borderRadius: "12px",
+              }}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
+              className="btn btn-sm position-absolute top-50 end-0 translate-middle-y fw-bold"
               style={{
-                position: "absolute",
-                right: "15px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                border: "none",
                 background: "transparent",
-                color: "#fff",
-                cursor: "pointer",
-                fontWeight: "bold",
+                border: "none",
+                color: "white",
+                marginRight: "12px",
               }}
             >
               {showPassword ? "Hide" : "Show"}
@@ -152,46 +164,48 @@ function LoginPage() {
 
           <button
             type="submit"
-            className="btn w-100 fw-bold py-2"
+            className="btn btn-lg w-100 fw-bold text-white"
             style={{
               background: "linear-gradient(to right, #4e54c8, #8f94fb)",
-              color: "#fff",
+              borderRadius: "12px",
               fontSize: "18px",
+              transition: "0.3s",
             }}
           >
             {loading ? "Loading..." : "Login"}
           </button>
         </form>
 
+        {/* Toast */}
         {toastMsg && (
           <div
-            className="toast show position-absolute"
+            className="toast show position-absolute start-50 translate-middle-x mt-3"
             style={{
-              bottom: "-60px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              backgroundColor: toastMsg.includes("Invalid")
+              background: toastMsg.includes("Invalid")
                 ? "#dc3545"
                 : "#28a745",
-              color: "#fff",
               padding: "10px 20px",
-              borderRadius: "8px",
+              borderRadius: "12px",
+              color: "#fff",
+              fontWeight: "bold",
+              bottom: "-60px",
               zIndex: 3,
             }}
           >
             {toastMsg}
           </div>
         )}
-
-        <div className="text-center mt-3">
-          <small style={{ color: "#fff" }}>
-            Demo Accounts: <br />
-            Admin → admin / admin123 <br />
-            Staff → staff / staff123 <br />
-            HOD → hod / hod123
-          </small>
-        </div>
       </div>
+
+      {/* Only keep floatUp animation */}
+      <style>
+        {`
+        @keyframes floatUp {
+          0% { transform: translateY(30px); opacity: 0; }
+          100% { transform: translateY(0); opacity: 1; }
+        }
+      `}
+      </style>
     </div>
   );
 }
