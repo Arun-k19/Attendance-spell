@@ -26,9 +26,11 @@ function LoginPage() {
       setLoading(false);
       setToastMsg(res.data.msg);
 
-      if (role === "Admin") navigate("/dashboard-admin");
-      else if (role === "Staff") navigate("/dashboard-staff");
-      else if (role === "HOD") navigate("/dashboard-hod");
+      if (res.data.msg === "Login Successful") {
+        if (role === "Admin") navigate("/dashboard-admin");
+        else if (role === "Staff") navigate("/dashboard-staff");
+        else if (role === "HOD") navigate("/dashboard-hod");
+      }
     } catch (err) {
       setLoading(false);
       setToastMsg("Invalid credentials!");
@@ -51,7 +53,6 @@ function LoginPage() {
         overflow: "hidden",
       }}
     >
-      {/* Dark overlay */}
       <div
         style={{
           position: "absolute",
@@ -64,13 +65,12 @@ function LoginPage() {
         }}
       ></div>
 
-      {/* Login card */}
       <div
         className="card shadow-lg"
         style={{
-          width: "40%", // 💻 Desktop width (40% of screen)
-          minWidth: "400px", // won't shrink below 400px
-          maxWidth: "600px", // won't exceed this
+          width: "40%",
+          minWidth: "400px",
+          maxWidth: "600px",
           padding: "3rem",
           background: "rgba(255,255,255,0.15)",
           backdropFilter: "blur(15px)",
@@ -78,7 +78,7 @@ function LoginPage() {
           border: "1px solid rgba(255,255,255,0.3)",
           position: "relative",
           zIndex: 2,
-          transform: "scale(1.05)", // slight zoom
+          transform: "scale(1.05)",
           transition: "all 0.3s ease-in-out",
         }}
       >
@@ -186,9 +186,9 @@ function LoginPage() {
         <div className="text-center mt-3">
           <small style={{ color: "#fff" }}>
             Demo Accounts: <br />
-            Admin → admin/admin123 <br />
-            Staff → staff/staff123 <br />
-            HOD → hod/hod123
+            Admin → admin / admin123 <br />
+            Staff → staff / staff123 <br />
+            HOD → hod / hod123
           </small>
         </div>
       </div>
