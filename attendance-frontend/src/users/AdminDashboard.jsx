@@ -2,19 +2,14 @@ import React, { useEffect, useState } from "react";
 import Papa from "papaparse";
 import AdminSidebar from "../components/Admin/AdminSidebar";
 import AdminNavbar from "../components/Admin/AdminNavbar";
-import ManageStudents from "../Pages/ManageStudents"; // ✅ imported
-
-/**
- * AdminDashboard.jsx
- * Clean modular admin panel — includes ManageStudents component
- */
+import ManageStudents from "../Pages/ManageStudents";
+import ManageStaffs from "../Pages/ManageStaffs"; // ✅ Added
 
 export default function AdminDashboard() {
-  // ⏱️ State Management
   const [activeTab, setActiveTab] = useState("dashboard");
   const [now, setNow] = useState(new Date());
 
-  // 🎓 Student Management
+  // 🎓 Students
   const [stuFile, setStuFile] = useState(null);
   const [uploadedStudents, setUploadedStudents] = useState([]);
   const [studentsDemo] = useState([
@@ -26,31 +21,27 @@ export default function AdminDashboard() {
   const [filterDept, setFilterDept] = useState("");
   const [filterYear, setFilterYear] = useState("");
 
-  // 👩‍🏫 Staff Management
+  // 👨‍🏫 Staffs
   const [staffs, setStaffs] = useState([
     { id: 1, name: "Ms. Meena", dept: "CSE", email: "meena@college.edu", phone: "9876500001" },
     { id: 2, name: "Mr. Ravi", dept: "ECE", email: "ravi@college.edu", phone: "9876500002" },
   ]);
 
-  // 🧑‍💼 HOD Management
+  // 🧑‍💼 HODs
   const [hods, setHods] = useState([
     { id: 1, name: "Dr. Suresh Kumar", dept: "CSE", email: "suresh@college.edu", phone: "9876543210" },
   ]);
 
-  // 🕒 Update time in navbar
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
 
-  // 🚪 Logout handler
   const handleLogout = () => {
-    if (window.confirm("Are you sure you want to logout?")) {
-      window.location.href = "/";
-    }
+    if (window.confirm("Are you sure you want to logout?")) window.location.href = "/";
   };
 
-  // 📥 CSV Upload (Students)
+  // 📥 CSV Upload
   const handleStudentUpload = () => {
     if (!stuFile) {
       alert("Please choose a CSV file to upload.");
@@ -76,7 +67,7 @@ export default function AdminDashboard() {
     });
   };
 
-  // 🎯 Student filter logic
+  // 🎯 Student Filters
   const applyStudentFilter = () => {
     const source = uploadedStudents.length ? uploadedStudents : studentsDemo;
     let result = source;
@@ -91,7 +82,7 @@ export default function AdminDashboard() {
     setFilteredStudents([]);
   };
 
-  // 🧮 Quick dashboard stats
+  // Dashboard stats
   const totalStudents = uploadedStudents.length ? uploadedStudents.length : studentsDemo.length;
   const totalStaff = staffs.length;
   const totalHods = hods.length;
@@ -101,12 +92,12 @@ export default function AdminDashboard() {
       {/* Sidebar */}
       <AdminSidebar activeTab={activeTab} setActiveTab={setActiveTab} handleLogout={handleLogout} />
 
-      {/* Main content */}
+      {/* Main Content */}
       <div className="flex-grow-1">
         <AdminNavbar now={now} />
 
         <main className="p-4">
-          {/* ---------------- 🏠 DASHBOARD TAB ---------------- */}
+          {/* 🏠 Dashboard */}
           {activeTab === "dashboard" && (
             <section>
               <div className="d-flex justify-content-between align-items-center mb-3">
@@ -115,7 +106,7 @@ export default function AdminDashboard() {
 
               <div className="row g-3 mb-4">
                 <div className="col-12 col-sm-6 col-lg-3">
-                  <div className="card h-100 border-0 shadow-sm">
+                  <div className="card shadow-sm border-0">
                     <div className="card-body">
                       <small className="text-muted">Total Students</small>
                       <div className="h3 fw-bold mt-2">{totalStudents}</div>
@@ -124,7 +115,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="col-12 col-sm-6 col-lg-3">
-                  <div className="card h-100 border-0 shadow-sm">
+                  <div className="card shadow-sm border-0">
                     <div className="card-body">
                       <small className="text-muted">Total Staff</small>
                       <div className="h3 fw-bold mt-2">{totalStaff}</div>
@@ -133,7 +124,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="col-12 col-sm-6 col-lg-3">
-                  <div className="card h-100 border-0 shadow-sm">
+                  <div className="card shadow-sm border-0">
                     <div className="card-body">
                       <small className="text-muted">Total HODs</small>
                       <div className="h3 fw-bold mt-2">{totalHods}</div>
@@ -142,7 +133,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="col-12 col-sm-6 col-lg-3">
-                  <div className="card h-100 border-0 shadow-sm">
+                  <div className="card shadow-sm border-0">
                     <div className="card-body">
                       <small className="text-muted">Today's Attendance</small>
                       <div className="h3 fw-bold mt-2">87%</div>
@@ -150,31 +141,10 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
-
-              {/* Quick Actions */}
-              <div className="card border-0 shadow-sm">
-                <div className="card-body">
-                  <h6 className="card-title mb-3">Quick Actions</h6>
-                  <div className="d-grid gap-2 d-md-flex">
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => setActiveTab("manageStudents")}
-                    >
-                      Manage Students
-                    </button>
-                    <button className="btn btn-success" onClick={() => alert("Feature Coming Soon!")}>
-                      Create Spell
-                    </button>
-                    <button className="btn btn-outline-secondary" onClick={() => alert("Export Feature Coming Soon!")}>
-                      Export CSV
-                    </button>
-                  </div>
-                </div>
-              </div>
             </section>
           )}
 
-          {/* ---------------- 🎓 MANAGE STUDENTS TAB ---------------- */}
+          {/* 🎓 Manage Students */}
           {activeTab === "manageStudents" && (
             <ManageStudents
               stuFile={stuFile}
@@ -192,15 +162,12 @@ export default function AdminDashboard() {
             />
           )}
 
-          {/* ---------------- 👩‍🏫 MANAGE STAFF TAB ---------------- */}
+          {/* 👨‍🏫 Manage Staff */}
           {activeTab === "manageStaff" && (
-            <section>
-              <h3 className="mb-3">Manage Staff</h3>
-              <p className="text-muted">Staff management functionality coming soon.</p>
-            </section>
+            <ManageStaffs /> // ✅ Fully integrated staff management page
           )}
 
-          {/* ---------------- 🧑‍💼 MANAGE HOD TAB ---------------- */}
+          {/* 🧑‍💼 Manage HOD */}
           {activeTab === "manageHOD" && (
             <section>
               <h3 className="mb-3">Manage HOD</h3>
@@ -208,7 +175,7 @@ export default function AdminDashboard() {
             </section>
           )}
 
-          {/* ---------------- 📊 REPORTS TAB ---------------- */}
+          {/* 📊 Reports */}
           {activeTab === "reports" && (
             <section>
               <h3 className="mb-3">Reports</h3>
