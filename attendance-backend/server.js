@@ -5,6 +5,9 @@ import dotenv from "dotenv";
 
 // import routes
 import authRoutes from "./routes/auth.js";
+import studentRoutes from "./routes/studentRoutes.js";
+
+
 
 dotenv.config();
 
@@ -20,6 +23,7 @@ mongoose
 
 // ✅ Routes
 app.use("/api", authRoutes);
+app.use("/api/students", studentRoutes);
 
 // ✅ Test route
 app.get("/", (req, res) => {
