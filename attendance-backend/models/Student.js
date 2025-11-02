@@ -5,7 +5,7 @@ const studentSchema = new mongoose.Schema({
   name: { type: String, required: true },
   dept: { type: String, required: true },
   year: { type: String, required: true },
-  attendance: { type: Number, default: 0 }
+  attendance: { type: String, default: 0 }
 });
 
 export default mongoose.model("Student", studentSchema);
