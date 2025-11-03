@@ -18,21 +18,22 @@ export default function ManageHODs() {
     status: true,
   });
 
+  // 🔹 Load all HODs from backend
   useEffect(() => {
     fetchHod();
   }, []);
 
   const fetchHod = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/staff`);
-      const hods = res.data.filter((s) => s.role === "HOD");
-      setHodList(hods);
+      const res = await axios.get(`${BASE_URL}/hod`);
+      setHodList(res.data);
     } catch (err) {
-      console.error("Fetch Error:", err);
-      alert("❌ Failed to load HOD data!");
+      console.error("❌ Fetch Error:", err);
+      alert("Failed to load HOD data!");
     }
   };
 
+  // 🔹 Save or Update
   const handleSave = async () => {
     if (!formData.name || !formData.department) {
       alert("⚠ Please fill all required fields!");
@@ -41,37 +42,43 @@ export default function ManageHODs() {
 
     try {
       if (editingHod) {
-        await axios.put(`${BASE_URL}/staff/${editingHod._id}`, formData);
+        await axios.put(`${BASE_URL}/hod/${editingHod._id}`, formData);
         alert("✅ HOD updated successfully!");
       } else {
-        await axios.post(`${BASE_URL}/staff/add`, formData);
+        await axios.post(`${BASE_URL}/hod/add`, formData);
         alert("✅ HOD added successfully!");
       }
       setShowModal(false);
       resetForm();
       fetchHod();
     } catch (err) {
-      console.error("Save Error:", err);
-      alert("❌ Error saving HOD");
+      console.error("❌ Save Error:", err);
+      alert("Error saving HOD");
     }
   };
 
+  // 🔹 Delete
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this HOD?")) {
       try {
-        await axios.delete(`${BASE_URL}/staff/${id}`);
+        await axios.delete(`${BASE_URL}/hod/${id}`);
         alert("🗑 HOD deleted!");
         fetchHod();
       } catch (err) {
         console.error(err);
-        alert("❌ Error deleting HOD");
+        alert("Error deleting HOD");
       }
     }
   };
 
   const handleEdit = (hod) => {
     setEditingHod(hod);
-    setFormData(hod);
+    setFormData({
+      name: hod.name,
+      department: hod.department,
+      role: "HOD",
+      status: hod.status,
+    });
     setShowModal(true);
   };
 
@@ -98,11 +105,11 @@ export default function ManageHODs() {
     });
   };
 
-  // 🔍 Search filter for HODs
+  // 🔍 Filter (search)
   const filteredHods = hodList.filter(
-    (s) =>
-      s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.department.toLowerCase().includes(searchTerm.toLowerCase())
+    (h) =>
+      h.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      h.department.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const activeDot = (status) => ({
@@ -123,7 +130,6 @@ export default function ManageHODs() {
           className="btn btn-primary"
           onClick={() => {
             resetForm();
-            setEditingHod(null);
             setShowModal(true);
           }}
         >
@@ -267,7 +273,7 @@ export default function ManageHODs() {
         </div>
       )}
 
-      {/* Card View Modal */}
+      {/* Card View */}
       {showCard && selectedHod && (
         <div
           className="modal show fade d-block"

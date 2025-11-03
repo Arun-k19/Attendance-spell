@@ -8,6 +8,7 @@ import dotenv from "dotenv";
 import authRoutes from "./routes/auth.js";
 import studentRoutes from "./routes/studentRoutes.js";
 import staffRoutes from "./routes/staffRoutes.js";
+import hodRoutes from "./routes/hodRoutes.js";
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ mongoose.connect(process.env.MONGO_URI)
 app.use("/api", authRoutes);
 app.use("/api/students", studentRoutes);
 app.use("/api/staff", staffRoutes);
+app.use("/api/hod", hodRoutes);
 
 // ✅ Test route
 app.get("/", (req, res) => {
