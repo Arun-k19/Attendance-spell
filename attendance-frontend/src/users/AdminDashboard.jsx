@@ -53,7 +53,7 @@ export default function AdminDashboard() {
       skipEmptyLines: true,
       complete: (res) => {
         const mapped = res.data.map((r, idx) => ({
-          regNo: r.RegNo || r.regno || r.Reg || `R-${idx + 1}`,
+          regNo: r.RegNo || r.regno || r.Reg || R-${idx + 1},
           name: r.Name || r.name || "N/A",
           dept: r.Department || r.Dept || r.dept || "N/A",
           year: r.Year || r.year || "N/A",

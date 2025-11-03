@@ -24,7 +24,7 @@ export default function ManageHODs() {
 
   const fetchHod = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/staff`);
+      const res = await axios.get(${BASE_URL}/staff);
       const hods = res.data.filter((s) => s.role === "HOD");
       setHodList(hods);
     } catch (err) {
@@ -35,16 +35,16 @@ export default function ManageHODs() {
 
   const handleSave = async () => {
     if (!formData.name || !formData.department) {
-      alert("⚠️ Please fill all required fields!");
+      alert("⚠ Please fill all required fields!");
       return;
     }
 
     try {
       if (editingHod) {
-        await axios.put(`${BASE_URL}/staff/${editingHod._id}`, formData);
+        await axios.put(${BASE_URL}/staff/${editingHod._id}, formData);
         alert("✅ HOD updated successfully!");
       } else {
-        await axios.post(`${BASE_URL}/staff/add`, formData);
+        await axios.post(${BASE_URL}/staff/add, formData);
         alert("✅ HOD added successfully!");
       }
       setShowModal(false);
@@ -59,8 +59,8 @@ export default function ManageHODs() {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this HOD?")) {
       try {
-        await axios.delete(`${BASE_URL}/staff/${id}`);
-        alert("🗑️ HOD deleted!");
+        await axios.delete(${BASE_URL}/staff/${id});
+        alert("🗑 HOD deleted!");
         fetchHod();
       } catch (err) {
         console.error(err);
@@ -334,7 +334,7 @@ export default function ManageHODs() {
                     setShowCard(false);
                   }}
                 >
-                  🗑️ Delete
+                  🗑 Delete
                 </button>
               </div>
             </div>
