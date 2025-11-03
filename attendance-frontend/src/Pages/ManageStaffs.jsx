@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import BASE_URL from "../config"; // example: export default "http://localhost:3001/api";
+import BASE_URL from "../config";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 export default function ManageStaffs() {
-  const departmentOptions = ["CSE", "ECE", "EEE", "IT", "MECH", "CIVIL"];
-  const yearOptions = ["I Year", "II Year", "III Year", "IV Year"];
+  const departmentOptions = ["", "CSE", "ECE", "EEE", "IT", "MECH", "CIVIL"];
+  const yearOptions = ["", "I Year", "II Year", "III Year", "IV Year"];
   const roleOptions = ["Faculty", "HOD", "Lab Incharge"];
 
   const [staffList, setStaffList] = useState([]);
@@ -14,6 +14,7 @@ export default function ManageStaffs() {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingStaff, setEditingStaff] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [viewStaff, setViewStaff] = useState(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -23,7 +24,6 @@ export default function ManageStaffs() {
     status: true,
   });
 
-  // 🧠 Fetch staff on load
   useEffect(() => {
     fetchStaff();
   }, []);
@@ -38,7 +38,6 @@ export default function ManageStaffs() {
     }
   };
 
-  // 💾 Add / Update staff
   const handleSave = async () => {
     if (!formData.name || !formData.department || !formData.role) {
       alert("Please fill all required fields!");
@@ -53,16 +52,8 @@ export default function ManageStaffs() {
         await axios.post(`${BASE_URL}/staff/add`, formData);
         alert("✅ Staff added successfully!");
       }
-
       setShowModal(false);
-      setFormData({
-        name: "",
-        department: "",
-        subjects: [{ name: "", year: "" }],
-        role: "",
-        status: true,
-      });
-      setEditingStaff(null);
+      resetForm();
       fetchStaff();
     } catch (err) {
       console.error("Save Error:", err);
@@ -70,7 +61,17 @@ export default function ManageStaffs() {
     }
   };
 
-  // ❌ Delete
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      department: "",
+      subjects: [{ name: "", year: "" }],
+      role: "",
+      status: true,
+    });
+    setEditingStaff(null);
+  };
+
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this staff?")) {
       await axios.delete(`${BASE_URL}/staff/${id}`);
@@ -78,7 +79,6 @@ export default function ManageStaffs() {
     }
   };
 
-  // 🧭 Edit
   const handleEdit = (staff) => {
     setEditingStaff(staff);
     setFormData(staff);
@@ -111,7 +111,7 @@ export default function ManageStaffs() {
     setFormData({ ...formData, subjects: updated });
   };
 
-  // 🔍 Filters
+  // 🔍 Filter & Search
   const filteredStaff = staffList.filter((s) => {
     const matchDept = filterDept ? s.department === filterDept : true;
     const matchYear = filterYear
@@ -119,8 +119,11 @@ export default function ManageStaffs() {
       : true;
     const matchSearch = searchTerm
       ? s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.subjects.some((sub) =>
-          sub.name.toLowerCase().includes(searchTerm.toLowerCase())
+        s.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        s.subjects.some(
+          (sub) =>
+            sub.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            sub.year.toLowerCase().includes(searchTerm.toLowerCase())
         )
       : true;
     return matchDept && matchYear && matchSearch;
@@ -140,9 +143,18 @@ export default function ManageStaffs() {
     display: "inline-block",
   });
 
+  // 🧮 Department-wise count
+  const totalStaff = staffList.length;
+  const deptCounts = departmentOptions
+    .filter((d) => d)
+    .map((dept) => ({
+      name: dept,
+      count: staffList.filter((s) => s.department === dept).length,
+    }));
+
   return (
-    <section className="container my-4">
-      {/* Header Section */}
+    <section className="container py-3">
+      {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h3 className="fw-bold text-primary">Manage Staff</h3>
         <div>
@@ -153,13 +165,7 @@ export default function ManageStaffs() {
             className="btn btn-primary"
             onClick={() => {
               setEditingStaff(null);
-              setFormData({
-                name: "",
-                department: "",
-                subjects: [{ name: "", year: "" }],
-                role: "",
-                status: true,
-              });
+              resetForm();
               setShowModal(true);
             }}
           >
@@ -168,79 +174,192 @@ export default function ManageStaffs() {
         </div>
       </div>
 
-      {/* Filter Section */}
-      <div className="d-flex mb-3 gap-2">
-        <select
-          className="form-select"
-          value={filterDept}
-          onChange={(e) => setFilterDept(e.target.value)}
-        >
-          <option value="">Department</option>
-          {departmentOptions.map((d) => (
-            <option key={d}>{d}</option>
+      {/* Total Staff + Department Count */}
+      <div className="card border-0 shadow-sm p-3 mb-3">
+        <h5 className="fw-bold text-secondary mb-2">
+          Total Staff: <span className="text-primary">{totalStaff}</span>
+        </h5>
+        <div className="d-flex flex-wrap gap-2">
+          {deptCounts.map((d) => (
+            <span key={d.name} className="badge bg-light text-dark border">
+              {d.name}: {d.count}
+            </span>
           ))}
-        </select>
-
-        <select
-          className="form-select"
-          value={filterYear}
-          onChange={(e) => setFilterYear(e.target.value)}
-        >
-          <option value="">Year</option>
-          {yearOptions.map((y) => (
-            <option key={y}>{y}</option>
-          ))}
-        </select>
-
-        <input
-          type="text"
-          className="form-control"
-          placeholder="Search by name or subject"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+        </div>
       </div>
 
-      {/* Table Section */}
-      <table className="table table-bordered table-hover">
-        <thead className="table-primary">
-          <tr>
-            <th>Status</th>
-            <th>Name</th>
-            <th>Department</th>
-            <th>Year(s)</th>
-            <th>Role</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredStaff.map((staff) => (
-            <tr key={staff._id}>
-              <td>
-                <span style={activeDot(staff.status)}></span>
-              </td>
-              <td>{staff.name}</td>
-              <td>{staff.department}</td>
-              <td>{staff.subjects.map((s) => s.year).join(", ")}</td>
-              <td>{staff.role}</td>
-              <td>
+      {/* Filters */}
+      <div className="card shadow-sm border-0 mb-3">
+        <div className="card-body row g-2 align-items-center">
+          <div className="col-md-3">
+            <select
+              className="form-select"
+              value={filterDept}
+              onChange={(e) => setFilterDept(e.target.value)}
+            >
+              {departmentOptions.map((d) => (
+                <option key={d} value={d}>
+                  {d || "Department"}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="col-md-3">
+            <select
+              className="form-select"
+              value={filterYear}
+              onChange={(e) => setFilterYear(e.target.value)}
+            >
+              {yearOptions.map((y) => (
+                <option key={y} value={y}>
+                  {y || "Year"}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="col-md-4">
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Search by name, department, subject, or year..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Staff Table */}
+      <div className="card border-0 shadow-sm">
+        <div className="card-body table-responsive">
+          <table className="table table-hover align-middle">
+            <thead className="table-primary">
+              <tr>
+                <th>Status</th>
+                <th>Name</th>
+                <th>Department</th>
+                <th>Year</th>
+                <th>Role</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredStaff.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="text-center py-4">
+                    No staff found
+                  </td>
+                </tr>
+              ) : (
+                filteredStaff.map((staff, i) => (
+                  <tr
+                    key={i}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => setViewStaff(staff)}
+                  >
+                    <td>
+                      <span style={activeDot(staff.status)}></span>
+                    </td>
+                    <td>{staff.name}</td>
+                    <td>{staff.department}</td>
+                    <td>
+                      {staff.subjects && staff.subjects.length > 0
+                        ? staff.subjects
+                            .map((sub) => sub.year)
+                            .filter((year) => year)
+                            .join(", ")
+                        : "N/A"}
+                    </td>
+                    <td>{staff.role}</td>
+                    <td>
+                      <button
+                        className="btn btn-sm btn-outline-primary me-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(staff);
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(staff._id);
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Staff Detail Modal */}
+      {viewStaff && (
+        <div
+          className="modal show fade d-block"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content p-3 position-relative">
+              <span
+                style={{
+                  ...activeDot(viewStaff.status),
+                  position: "absolute",
+                  top: 15,
+                  right: 20,
+                }}
+              ></span>
+
+              <div className="modal-header border-0 pb-0">
+                <h5 className="modal-title text-primary fw-bold">
+                  {viewStaff.name}
+                </h5>
+              </div>
+              <div className="modal-body">
+                <p className="mb-1">
+                  <strong>Department:</strong> {viewStaff.department}
+                </p>
+                <p className="mb-1">
+                  <strong>Role:</strong> {viewStaff.role}
+                </p>
+                <div className="mt-3">
+                  <strong>Subjects:</strong>
+                  <div className="mt-2 d-flex flex-column gap-1">
+                    {viewStaff.subjects.map((sub, i) => (
+                      <div key={i}>
+                        {sub.name ? (
+                          <span>
+                            {sub.name}{" "}
+                            <span className="text-muted small">
+                              ({sub.year})
+                            </span>
+                          </span>
+                        ) : (
+                          "N/A"
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer border-0">
                 <button
-                  className="btn btn-sm btn-outline-primary me-2"
-                  onClick={() => handleEdit(staff)}
+                  className="btn btn-secondary"
+                  onClick={() => setViewStaff(null)}
                 >
-                  Edit
+                  Close
                 </button>
-                <button
-                  className="btn btn-sm btn-outline-danger"
-                  onClick={() => handleDelete(staff._id)}
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add/Edit Modal */}
       {showModal && (
@@ -259,9 +378,7 @@ export default function ManageStaffs() {
                   onClick={() => setShowModal(false)}
                 ></button>
               </div>
-
               <div className="modal-body">
-                {/* Name */}
                 <input
                   type="text"
                   name="name"
@@ -270,8 +387,6 @@ export default function ManageStaffs() {
                   value={formData.name}
                   onChange={handleChange}
                 />
-
-                {/* Department */}
                 <select
                   className="form-select mb-2"
                   name="department"
@@ -279,12 +394,13 @@ export default function ManageStaffs() {
                   onChange={handleChange}
                 >
                   <option value="">Select Department</option>
-                  {departmentOptions.map((dept) => (
-                    <option key={dept}>{dept}</option>
-                  ))}
+                  {departmentOptions
+                    .filter((d) => d)
+                    .map((dept) => (
+                      <option key={dept}>{dept}</option>
+                    ))}
                 </select>
 
-                {/* Subjects */}
                 <h6>Subjects</h6>
                 {formData.subjects.map((sub, index) => (
                   <div key={index} className="d-flex mb-2 gap-2">
@@ -305,9 +421,11 @@ export default function ManageStaffs() {
                       }
                     >
                       <option value="">Year</option>
-                      {yearOptions.map((y) => (
-                        <option key={y}>{y}</option>
-                      ))}
+                      {yearOptions
+                        .filter((y) => y)
+                        .map((y) => (
+                          <option key={y}>{y}</option>
+                        ))}
                     </select>
                     {formData.subjects.length > 1 && (
                       <button
@@ -319,11 +437,13 @@ export default function ManageStaffs() {
                     )}
                   </div>
                 ))}
-                <button className="btn btn-outline-success mb-3" onClick={addSubject}>
+                <button
+                  className="btn btn-outline-success mb-3"
+                  onClick={addSubject}
+                >
                   + Add Subject
                 </button>
 
-                {/* Role */}
                 <select
                   className="form-select mb-3"
                   name="role"
@@ -336,7 +456,6 @@ export default function ManageStaffs() {
                   ))}
                 </select>
 
-                {/* Status */}
                 <div className="form-check">
                   <input
                     type="checkbox"
@@ -351,7 +470,6 @@ export default function ManageStaffs() {
                   </label>
                 </div>
               </div>
-
               <div className="modal-footer">
                 <button
                   className="btn btn-secondary"
