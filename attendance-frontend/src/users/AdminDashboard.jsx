@@ -23,13 +23,13 @@ export default function AdminDashboard() {
   const [filterYear, setFilterYear] = useState("");
 
   // 👨‍🏫 Staffs
-  const [staffs, setStaffs] = useState([
+  const [staffs] = useState([
     { id: 1, name: "Ms. Meena", dept: "CSE", email: "meena@college.edu", phone: "9876500001" },
     { id: 2, name: "Mr. Ravi", dept: "ECE", email: "ravi@college.edu", phone: "9876500002" },
   ]);
 
   // 🧑‍💼 HODs
-  const [hods, setHods] = useState([
+  const [hods] = useState([
     { id: 1, name: "Dr. Suresh Kumar", dept: "CSE", email: "suresh@college.edu", phone: "9876543210" },
   ]);
 
