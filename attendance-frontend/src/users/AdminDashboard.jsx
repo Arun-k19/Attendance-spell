@@ -3,7 +3,8 @@ import Papa from "papaparse";
 import AdminSidebar from "../components/Admin/AdminSidebar";
 import AdminNavbar from "../components/Admin/AdminNavbar";
 import ManageStudents from "../Pages/ManageStudents";
-import ManageStaffs from "../Pages/ManageStaffs"; // ✅ Added
+import ManageStaffs from "../Pages/ManageStaffs";
+import ManageHODs from "../Pages/ManageHODs"; // ✅ Added import
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -163,17 +164,10 @@ export default function AdminDashboard() {
           )}
 
           {/* 👨‍🏫 Manage Staff */}
-          {activeTab === "manageStaff" && (
-            <ManageStaffs /> // ✅ Fully integrated staff management page
-          )}
+          {activeTab === "manageStaff" && <ManageStaffs />}
 
           {/* 🧑‍💼 Manage HOD */}
-          {activeTab === "manageHOD" && (
-            <section>
-              <h3 className="mb-3">Manage HOD</h3>
-              <p className="text-muted">HOD management functionality coming soon.</p>
-            </section>
-          )}
+         {activeTab === "manageHOD" && <ManageHODs />}
 
           {/* 📊 Reports */}
           {activeTab === "reports" && (
