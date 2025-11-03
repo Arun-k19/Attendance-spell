@@ -24,7 +24,7 @@ export default function ManageHODs() {
 
   const fetchHod = async () => {
     try {
-      const res = await axios.get(${BASE_URL}/staff);
+      const res = await axios.get(`${BASE_URL}/staff`);
       const hods = res.data.filter((s) => s.role === "HOD");
       setHodList(hods);
     } catch (err) {
@@ -41,10 +41,10 @@ export default function ManageHODs() {
 
     try {
       if (editingHod) {
-        await axios.put(${BASE_URL}/staff/${editingHod._id}, formData);
+        await axios.put(`${BASE_URL}/staff/${editingHod._id}`, formData);
         alert("✅ HOD updated successfully!");
       } else {
-        await axios.post(${BASE_URL}/staff/add, formData);
+        await axios.post(`${BASE_URL}/staff/add`, formData);
         alert("✅ HOD added successfully!");
       }
       setShowModal(false);
@@ -59,7 +59,7 @@ export default function ManageHODs() {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this HOD?")) {
       try {
-        await axios.delete(${BASE_URL}/staff/${id});
+        await axios.delete(`${BASE_URL}/staff/${id}`);
         alert("🗑 HOD deleted!");
         fetchHod();
       } catch (err) {
@@ -98,7 +98,7 @@ export default function ManageHODs() {
     });
   };
 
-  // 🔍 Updated search to include name & department
+  // 🔍 Search filter for HODs
   const filteredHods = hodList.filter(
     (s) =>
       s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -267,7 +267,7 @@ export default function ManageHODs() {
         </div>
       )}
 
-      {/* Card View Modal (centered & bigger) */}
+      {/* Card View Modal */}
       {showCard && selectedHod && (
         <div
           className="modal show fade d-block"
@@ -325,8 +325,6 @@ export default function ManageHODs() {
               </div>
 
               <div className="text-end mt-4">
-               
-               
                 <button
                   className="btn btn-outline-danger px-4 py-2"
                   onClick={() => {
