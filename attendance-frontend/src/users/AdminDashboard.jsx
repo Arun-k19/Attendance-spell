@@ -4,6 +4,8 @@ import AdminSidebar from "../components/Admin/AdminSidebar";
 import AdminNavbar from "../components/Admin/AdminNavbar";
 import ManageStudents from "../Pages/ManageStudents";
 import ManageStaffs from "../Pages/ManageStaffs"; // ✅ Added
+import ManageHods from "../Pages/ManageHods";
+
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -168,12 +170,8 @@ export default function AdminDashboard() {
           )}
 
           {/* 🧑‍💼 Manage HOD */}
-          {activeTab === "manageHOD" && (
-            <section>
-              <h3 className="mb-3">Manage HOD</h3>
-              <p className="text-muted">HOD management functionality coming soon.</p>
-            </section>
-          )}
+         {activeTab === "manageHOD" && <ManageHods />}
+
 
           {/* 📊 Reports */}
           {activeTab === "reports" && (
