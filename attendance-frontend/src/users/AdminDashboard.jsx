@@ -5,6 +5,8 @@ import AdminNavbar from "../components/Admin/AdminNavbar";
 import ManageStudents from "../Pages/ManageStudents";
 import ManageStaffs from "../Pages/ManageStaffs"; // ✅ Added
 import ManageHods from "../Pages/ManageHods";
+import AttendancePage from "../Pages/AttendancePage";
+import Reports from "../Pages/Reports";
 
 
 export default function AdminDashboard() {
@@ -173,13 +175,16 @@ export default function AdminDashboard() {
          {activeTab === "manageHOD" && <ManageHods />}
 
 
+
+         {/* 📝 Attendance */}
+{activeTab === "attendance" && <AttendancePage />}
+
+
+
           {/* 📊 Reports */}
-          {activeTab === "reports" && (
-            <section>
-              <h3 className="mb-3">Reports</h3>
-              <p className="text-muted">Reports and analytics section under construction.</p>
-            </section>
-          )}
+          {/* 📊 Reports */}
+{activeTab === "reports" && <Reports />}
+
         </main>
       </div>
     </div>
