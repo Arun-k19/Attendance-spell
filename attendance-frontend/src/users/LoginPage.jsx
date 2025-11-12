@@ -17,7 +17,7 @@ function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await axios.post("http://localhost:3001/api/login", {
+      const res = await axios.post("http://localhost:3001/api/auth/login", {
         username,
         password,
         role,
@@ -27,13 +27,17 @@ function LoginPage() {
       setToastMsg(res.data.msg);
 
       if (res.data.msg === "Login Successful") {
+        const userRole = res.data.user.role?.toLowerCase(); // ✅ case-insensitive check
+
         setTimeout(() => {
-          if (role === "Admin") navigate("/dashboard-admin");
-          else if (role === "Staff") navigate("/dashboard-staff");
-          else if (role === "HOD") navigate("/dashboard-hod");
-        }, 1500);
+          if (userRole === "admin") navigate("/dashboard-admin");
+          else if (userRole === "hod") navigate("/dashboard-hod");
+          else if (userRole === "staff") navigate("/dashboard-staff");
+          else alert("Unknown role: " + userRole);
+        }, 1000);
       }
     } catch (err) {
+      console.error("❌ Login error:", err);
       setLoading(false);
       setToastMsg("Invalid credentials!");
     }
@@ -83,7 +87,7 @@ function LoginPage() {
       >
         {/* Logo */}
         <img
-          src="public\chendhuran-logo.png"
+          src="public/chendhuran-logo.png"
           alt="College Logo"
           className="mb-3 mx-auto d-block"
           style={{
@@ -92,12 +96,7 @@ function LoginPage() {
           }}
         />
 
-        <h2
-          className="fw-bold text-white mb-2"
-        >
-          College Attendance
-        </h2>
-
+        <h2 className="fw-bold text-white mb-2">College Attendance</h2>
         <p className="text-light mb-4">Login to continue</p>
 
         <form onSubmit={handleLogin}>
@@ -176,14 +175,12 @@ function LoginPage() {
           </button>
         </form>
 
-        {/* Toast */}
+        {/* Toast Message */}
         {toastMsg && (
           <div
             className="toast show position-absolute start-50 translate-middle-x mt-3"
             style={{
-              background: toastMsg.includes("Invalid")
-                ? "#dc3545"
-                : "#28a745",
+              background: toastMsg.includes("Invalid") ? "#dc3545" : "#28a745",
               padding: "10px 20px",
               borderRadius: "12px",
               color: "#fff",
@@ -197,7 +194,7 @@ function LoginPage() {
         )}
       </div>
 
-      {/* Only keep floatUp animation */}
+      {/* Animation */}
       <style>
         {`
         @keyframes floatUp {

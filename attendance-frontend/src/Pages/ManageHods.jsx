@@ -26,6 +26,7 @@ export default function ManageHODs() {
   const fetchHod = async () => {
     try {
       const res = await axios.get(`${BASE_URL}/hod`);
+      console.log("📦 Fetched HODs:", res.data);
       setHodList(res.data);
     } catch (err) {
       console.error("❌ Fetch Error:", err);

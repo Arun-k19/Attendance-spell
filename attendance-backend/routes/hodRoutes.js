@@ -1,5 +1,7 @@
 import express from "express";
 import Hod from "../models/Hod.js";
+import Student from "../models/Student.js";
+import Staff from "../models/Staff.js";
 
 const router = express.Router();
 
@@ -77,5 +79,47 @@ router.delete("/:id", async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+// 📊 HOD Dashboard — department-wise counts
+router.get("/dashboard-counts/:department", async (req, res) => {
+  try {
+    const { department } = req.params;
+
+    // filter department
+    const totalStudents = await Student.countDocuments({ department });
+    const totalStaffs = await Staff.countDocuments({ department });
+
+    // optional: attendance calculation
+    // const today = new Date().toISOString().split("T")[0];
+    // const totalMarked = await Attendance.countDocuments({ department, date: today });
+    // const totalPresent = await Attendance.countDocuments({ department, date: today, status: "Present" });
+    // const attendancePercent = totalMarked > 0 ? Math.round((totalPresent / totalMarked) * 100) : 0;
+
+    res.json({
+      totalStudents,
+      totalStaffs,
+      attendancePercent: 0 // replace with real value if attendance model added
+    });
+  } catch (err) {
+    console.error("❌ Error fetching HOD dashboard counts:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// 🔹 Existing HOD routes remain same
+router.post("/add", async (req, res) => {
+  try {
+    const { name, department, status } = req.body;
+    if (!name || !department)
+      return res.status(400).json({ message: "Name and Department are required" });
+
+    const newHod = new Hod({ name, department, status });
+    await newHod.save();
+    res.status(201).json({ message: "HOD added successfully", hod: newHod });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 
 export default router;

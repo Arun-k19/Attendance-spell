@@ -28,7 +28,7 @@ mongoose.connect(process.env.MONGO_URI)
 
 
 // ✅ Routes
-app.use("/api", authRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/students", studentRoutes);
 app.use("/api/staff", staffRoutes);
 app.use("/api/hod", hodRoutes);
