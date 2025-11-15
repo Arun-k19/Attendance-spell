@@ -34,104 +34,109 @@ const Reports = () => {
   // 📅 Smart Date Validation
   const handleSmartDate = (type, value) => {
     const dateObj = new Date(value);
+
     if (dateObj > new Date()) {
-      alert("⛔ You cannot select a future date!");
+      showAlert("⛔ Future date cannot be selected!", "danger");
       return;
     }
     if (dateObj.getDay() === 0) {
-      alert("🚫 Sunday is not a working day!");
+      showAlert("🚫 Sunday is not a working day!", "danger");
       return;
     }
     const holiday = holidays.find((h) => h.date === value);
     if (holiday) {
-      alert(`🎌 ${holiday.name} — It's a Government Holiday!`);
+      showAlert(`🎌 ${holiday.name} — Holiday`, "warning");
       return;
     }
+
     type === "from" ? setFromDate(value) : setToDate(value);
   };
 
   // 🧮 Working Days Calculation
   useEffect(() => {
     if (fromDate && toDate) {
-      const start = new Date(fromDate);
-      const end = new Date(toDate);
-      if (start > end) {
+      const s = new Date(fromDate);
+      const e = new Date(toDate);
+
+      if (s > e) {
         setWorkingDays(null);
-        showAlert("⚠️ 'From Date' cannot be after 'To Date'!", "danger");
+        showAlert("⚠️ From date cannot be after To date!", "danger");
         return;
       }
 
       let count = 0;
-      const temp = new Date(start);
-      while (temp <= end) {
-        const day = temp.getDay();
-        const dateStr = temp.toISOString().split("T")[0];
-        const isHoliday = holidays.some((h) => h.date === dateStr);
-        if (day !== 0 && day !== 6 && !isHoliday) count++;
+      const temp = new Date(s);
+      while (temp <= e) {
+        const d = temp.getDay();
+        const dStr = temp.toISOString().split("T")[0];
+        const isHoliday = holidays.some((h) => h.date === dStr);
+
+        if (d !== 0 && d !== 6 && !isHoliday) count++;
         temp.setDate(temp.getDate() + 1);
       }
       setWorkingDays(count);
     }
   }, [fromDate, toDate]);
 
-  // 🧾 Report Calculation
+  // 📊 Report Calculation
   const calculateReport = () => {
-    const data = JSON.parse(localStorage.getItem("attendanceData") || "{}");
-    if (!Object.keys(data).length) {
-      showAlert("No attendance records found!", "danger");
+    const stored = JSON.parse(localStorage.getItem("attendanceData") || "{}");
+
+    if (!Object.keys(stored).length) {
+      showAlert("No attendance data found!", "danger");
       return;
     }
 
-    const reportList = [];
-    const start = new Date(fromDate);
-    const end = new Date(toDate);
+    const final = [];
+    const s = new Date(fromDate);
+    const e = new Date(toDate);
 
-    Object.keys(data).forEach((key) => {
+    Object.keys(stored).forEach((key) => {
       const [dept, yr, date] = key.split("_");
-      const dateObj = new Date(date);
+      const dObj = new Date(date);
+
       if (
         (department && dept !== department) ||
         (year && yr !== year) ||
-        dateObj < start ||
-        dateObj > end
+        dObj < s ||
+        dObj > e
       )
         return;
 
-      const periods = data[key];
-      Object.keys(periods).forEach((periodNum) => {
-        const { attendance } = periods[periodNum];
+      const periods = stored[key];
+      Object.keys(periods).forEach((p) => {
+        const { attendance } = periods[p];
+
         Object.entries(attendance).forEach(([roll, status]) => {
-          let student = reportList.find((r) => r.roll === roll);
-          if (!student)
-            reportList.push({
+          let stu = final.find((r) => r.roll === roll);
+
+          if (!stu)
+            final.push({
               roll,
               dept,
               yr,
               total: 0,
               present: 0,
-              dates: {},
             });
 
-          student = reportList.find((r) => r.roll === roll);
-          student.total++;
-          if (status === "P") student.present++;
-          if (!student.dates[date])
-            student.dates[date] = { [periodNum]: status };
-          else student.dates[date][periodNum] = status;
+          stu = final.find((r) => r.roll === roll);
+          stu.total++;
+          if (status === "P") stu.present++;
         });
       });
     });
 
-    const final = reportList.map((s) => ({
-      ...s,
-      percentage: s.total ? ((s.present / s.total) * 100).toFixed(1) : 0,
-    }));
+    final.forEach((s) => {
+      s.percentage = s.total
+        ? ((s.present / s.total) * 100).toFixed(1)
+        : 0;
+    });
 
     setReport(final);
     setShowReport(true);
   };
 
-  // 📤 Export to Excel
+  // Excel Export
   const exportToExcel = () => {
     const ws = XLSX.utils.json_to_sheet(report);
     const wb = XLSX.utils.book_new();
@@ -140,10 +145,12 @@ const Reports = () => {
   };
 
   return (
-    <section className="container py-3">
-      <h4 className="fw-bold text-primary text-center mb-3">
-        📊 Attendance Reports (Modern View)
-      </h4>
+    <section className="container py-3" style={{ maxWidth: "1100px" }}>
+      
+      {/* Header */}
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h3 className="fw-bold text-primary">📊 Attendance Reports</h3>
+      </div>
 
       {/* Toast */}
       {showToast && (
@@ -156,11 +163,12 @@ const Reports = () => {
       )}
 
       {/* Filters */}
-      <div className="card border-0 shadow-sm p-3 mb-3">
-        <div className="row g-2 align-items-center">
+      <div className="card shadow-sm border-0 p-3 mb-3" style={{ borderRadius: "12px" }}>
+        <div className="row g-2">
+
           <div className="col-md-2">
             <select
-              className="form-select"
+              className="form-select shadow-sm"
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
             >
@@ -172,9 +180,10 @@ const Reports = () => {
               <option value="CIVIL">CIVIL</option>
             </select>
           </div>
+
           <div className="col-md-2">
             <select
-              className="form-select"
+              className="form-select shadow-sm"
               value={year}
               onChange={(e) => setYear(e.target.value)}
             >
@@ -185,52 +194,63 @@ const Reports = () => {
               <option value="4">4</option>
             </select>
           </div>
+
           <div className="col-md-3">
-            <label className="small text-muted ms-1">From:</label>
             <input
               type="date"
-              className="form-control"
+              className="form-control shadow-sm"
               value={fromDate}
               onChange={(e) => handleSmartDate("from", e.target.value)}
             />
           </div>
+
           <div className="col-md-3">
-            <label className="small text-muted ms-1">To:</label>
             <input
               type="date"
-              className="form-control"
+              className="form-control shadow-sm"
               value={toDate}
               onChange={(e) => handleSmartDate("to", e.target.value)}
             />
           </div>
+
           <div className="col-md-2 d-grid">
-            <button className="btn btn-success" onClick={calculateReport}>
-              📄 View Report
+            <button
+              className="btn text-white fw-bold shadow-sm"
+              style={{
+                background: "linear-gradient(90deg,#22c55e,#16a34a)",
+              }}
+              onClick={calculateReport}
+            >
+              📄 View
             </button>
           </div>
         </div>
       </div>
 
-      {/* Working Days Info */}
+      {/* Working Days */}
       {workingDays !== null && (
         <div className="alert alert-info fw-semibold text-center">
-          🗓️ Working Days between <strong>{fromDate}</strong> and{" "}
-          <strong>{toDate}</strong>: {workingDays} Days
+          🗓 Total Working Days: {workingDays}
         </div>
       )}
 
       {/* Report Table */}
       {showReport && (
-        <div className="card border-0 shadow-sm p-3">
-          <div className="d-flex justify-content-between mb-3">
+        <div className="card shadow-sm border-0 p-3" style={{ borderRadius: "12px" }}>
+
+          <div className="d-flex justify-content-between">
             <h5 className="fw-bold text-primary">Attendance Summary</h5>
-            <button className="btn btn-outline-primary" onClick={exportToExcel}>
-              📘 Export Excel
+
+            <button
+              className="btn btn-outline-primary"
+              onClick={exportToExcel}
+            >
+              📘 Export
             </button>
           </div>
 
-          <table className="table table-bordered table-striped text-center">
-            <thead className="table-primary">
+          <table className="table table-hover mt-3">
+            <thead style={{ background: "#2563eb", color: "white" }}>
               <tr>
                 <th>Roll No</th>
                 <th>Dept</th>
@@ -240,21 +260,30 @@ const Reports = () => {
                 <th>%</th>
               </tr>
             </thead>
+
             <tbody>
               {report.map((r) => (
                 <tr
                   key={r.roll}
                   style={{ cursor: "pointer" }}
                   onClick={() => setSelectedStudent(r)}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background = "#eef3ff")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background = "white")
+                  }
                 >
-                  <td className="fw-bold text-primary">{r.roll}</td>
+                  <td className="fw-bold">{r.roll}</td>
                   <td>{r.dept}</td>
                   <td>{r.yr}</td>
                   <td>{r.present}</td>
                   <td>{r.total}</td>
                   <td
                     className={
-                      r.percentage >= 75 ? "text-success fw-bold" : "text-danger fw-bold"
+                      r.percentage >= 75
+                        ? "text-success fw-bold"
+                        : "text-danger fw-bold"
                     }
                   >
                     {r.percentage}%
@@ -266,42 +295,28 @@ const Reports = () => {
         </div>
       )}
 
-      {/* Student Info Card */}
+      {/* Modal Student */}
       {selectedStudent && (
         <div
           className="modal show fade d-block"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+          style={{ background: "rgba(0,0,0,0.5)" }}
         >
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content p-3 border-0 shadow-lg">
-              <div className="modal-header border-0">
-                <h5 className="modal-title fw-bold text-primary">
-                  🎓 {selectedStudent.roll}
-                </h5>
-                <button
-                  className="btn-close"
-                  onClick={() => setSelectedStudent(null)}
-                ></button>
+          <div className="modal-dialog">
+            <div className="modal-content p-3 shadow-lg" style={{ borderRadius: "15px" }}>
+
+              <div className="modal-header">
+                <h5 className="fw-bold text-primary">{selectedStudent.roll}</h5>
+                <button className="btn-close" onClick={() => setSelectedStudent(null)}></button>
               </div>
+
               <div className="modal-body">
+                <p><b>Dept:</b> {selectedStudent.dept}</p>
+                <p><b>Year:</b> {selectedStudent.yr}</p>
+                <p><b>Total Periods:</b> {selectedStudent.total}</p>
+                <p><b>Present:</b> {selectedStudent.present}</p>
+                <p><b>Absent:</b> {selectedStudent.total - selectedStudent.present}</p>
                 <p>
-                  <strong>Department:</strong> {selectedStudent.dept}
-                </p>
-                <p>
-                  <strong>Year:</strong> {selectedStudent.yr}
-                </p>
-                <p>
-                  <strong>Total Periods:</strong> {selectedStudent.total}
-                </p>
-                <p>
-                  <strong>Present:</strong> {selectedStudent.present}
-                </p>
-                <p>
-                  <strong>Absent:</strong>{" "}
-                  {selectedStudent.total - selectedStudent.present}
-                </p>
-                <p>
-                  <strong>Attendance:</strong>{" "}
+                  <b>Attendance:</b>{" "}
                   <span
                     className={
                       selectedStudent.percentage >= 75
@@ -313,14 +328,13 @@ const Reports = () => {
                   </span>
                 </p>
               </div>
-              <div className="modal-footer border-0">
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setSelectedStudent(null)}
-                >
+
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setSelectedStudent(null)}>
                   Close
                 </button>
               </div>
+
             </div>
           </div>
         </div>
