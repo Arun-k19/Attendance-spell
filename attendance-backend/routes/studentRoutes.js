@@ -96,10 +96,12 @@ router.get("/", async (req, res) => {
   try {
     const { dept, year } = req.query;
     const query = {};
+
     if (dept) query.dept = dept;
     if (year) query.year = year;
 
-    const students = await Student.find(query).sort({ name: 1 });
+    const students = await Student.find(query).sort({ regNo: 1 });
+
     res.json(students);
   } catch (err) {
     res.status(500).json({ msg: "Failed to fetch students" });

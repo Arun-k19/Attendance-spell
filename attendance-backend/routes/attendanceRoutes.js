@@ -1,32 +1,61 @@
 import express from "express";
 import Attendance from "../models/Attendance.js";
+import Student from "../models/Student.js";
 
 const router = express.Router();
 
-// ✅ 1. Attendance save
+// SAVE ATTENDANCE
 router.post("/save", async (req, res) => {
   try {
-    const newAttendance = new Attendance(req.body);
+    const { date, department, year, period, subject, attendance } = req.body;
+
+    // Convert regNo -> studentId
+    const mapped = await Promise.all(
+      attendance.map(async (item) => {
+        const student = await Student.findOne({ regNo: item.regNo });
+        return {
+          studentId: student?._id,
+          status: item.status,
+        };
+      })
+    );
+
+    const newAttendance = new Attendance({
+      date,
+      department,
+      year,
+      period,
+      subject,
+      attendance: mapped,
+    });
+
     await newAttendance.save();
+
     res.status(201).json({ message: "Attendance saved successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// ✅ 2. View attendance by date
+// VIEW ATTENDANCE
 router.get("/view", async (req, res) => {
   try {
     const { date, department, year, period } = req.query;
-    const attendance = await Attendance.find({ date, department, year, period })
-      .populate("attendance.studentId", "name rollno");
-    res.json(attendance);
+
+    const records = await Attendance.find({
+      date,
+      department,
+      year,
+      period,
+    }).populate("attendance.studentId", "name regNo");
+
+    res.json(records);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// ✅ 3. Generate report
+// REPORT
 router.get("/report", async (req, res) => {
   try {
     const { from, to, department, year } = req.query;
@@ -35,7 +64,7 @@ router.get("/report", async (req, res) => {
       department,
       year,
       date: { $gte: new Date(from), $lte: new Date(to) },
-    }).populate("attendance.studentId", "name rollno");
+    }).populate("attendance.studentId");
 
     res.json(records);
   } catch (error) {

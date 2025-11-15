@@ -2,7 +2,6 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
-import dashboardRoutes from "./routes/dashboardRoutes.js";
 
 
 // ✅ Import routes
@@ -10,6 +9,7 @@ import authRoutes from "./routes/auth.js";
 import studentRoutes from "./routes/studentRoutes.js";
 import staffRoutes from "./routes/staffRoutes.js";
 import hodRoutes from "./routes/hodRoutes.js";
+import dashboardRoutes from "./routes/dashboardRoutes.js";
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 
 dotenv.config();

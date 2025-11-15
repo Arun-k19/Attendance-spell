@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { saveAttendance } from "../api/attendanceApi";
+import { getStudentsByFilter } from "../api/studentApi";
 
 const AttendancePage = () => {
   const [department, setDepartment] = useState("");
@@ -11,130 +13,68 @@ const AttendancePage = () => {
   const [attendance, setAttendance] = useState({});
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [lockedPeriods, setLockedPeriods] = useState([]);
-  const [showTodaySummary, setShowTodaySummary] = useState(false);
-  const [showToast, setShowToast] = useState(null);
 
-  // Public holidays
-  const holidays = ["2025-01-26", "2025-08-15", "2025-10-02", "2025-12-25"];
-
-  // Auto set today
   useEffect(() => {
-    const today = new Date().toISOString().split("T")[0];
-    setDate(today);
+    setDate(new Date().toISOString().split("T")[0]);
   }, []);
 
-  // Load locked periods
-  useEffect(() => {
-    if (department && year && date) {
-      const key = `${department}_${year}_${date}`;
-      const saved = JSON.parse(localStorage.getItem("attendanceLocks") || "{}");
-      setLockedPeriods(saved[key] || []);
-    }
-  }, [department, year, date]);
+  // 🚀 Load Students From Backend
+  const loadStudents = async () => {
+    if (!department || !year || !period || !subject)
+      return alert("Please fill all fields!");
 
-  const showAlert = (message, type = "info") => {
-    setShowToast({ message, type });
-    setTimeout(() => setShowToast(null), 2500);
+    try {
+      const res = await getStudentsByFilter(department, year);
+
+      if (res.data.length === 0) return alert("No students found!");
+
+      setStudents(res.data);
+
+      // DEFAULT: P for all
+      const initial = {};
+      res.data.forEach((s) => (initial[s.regNo] = "P")); // FIXED
+      setAttendance(initial);
+
+      setIsLoaded(true);
+      setIsSubmitted(false);
+    } catch (err) {
+      alert("Failed to load students!");
+    }
   };
 
-  // Demo Data
-  const studentData = {
-    CSE: {
-      "1": [
-        { roll: "CSE11", name: "Ajay" },
-        { roll: "CSE12", name: "Mithra" },
-      ],
-      "2": [
-        { roll: "CSE21", name: "Hari" },
-        { roll: "CSE22", name: "Priya" },
-      ],
-      "3": [
-        { roll: "CSE31", name: "Deepa" },
-        { roll: "CSE32", name: "Suresh" },
-      ],
-      "4": [
-        { roll: "CSE41", name: "Arun Kumar" },
-        { roll: "CSE42", name: "Divya" },
-        { roll: "CSE43", name: "Karthik" },
-        { roll: "CSE44", name: "Priya" },
-      ],
-    },
-    ECE: { "4": [{ roll: "ECE41", name: "Vignesh" }] },
-    EEE: { "4": [{ roll: "EEE41", name: "Bala" }] },
-    MECH: { "4": [{ roll: "ME41", name: "Surya" }] },
-    CIVIL: { "4": [{ roll: "CV41", name: "Dinesh" }] },
-  };
-
-  const loadStudents = () => {
-    if (holidays.includes(date)) {
-      return showAlert("🎌 Today is a Government Holiday!", "danger");
-    }
-
-    if (new Date(date).getDay() === 0) {
-      return showAlert("🚫 Sunday is not a working day!", "danger");
-    }
-
-    if (!department || !year || !period || !subject) {
-      return showAlert("Please fill all fields!", "danger");
-    }
-
-    if (lockedPeriods.includes(Number(period))) {
-      return showAlert(`Period ${period} already submitted!`, "warning");
-    }
-
-    const list = studentData[department]?.[year];
-    if (!list) return showAlert("No student data found!", "danger");
-
-    const initial = {};
-    list.forEach((s) => (initial[s.roll] = "P"));
-    setStudents(list);
-    setAttendance(initial);
-    setIsLoaded(true);
-    showAlert("Students Loaded!", "success");
-  };
-
-  const toggleAttendance = (roll) => {
+  const toggleAttendance = (regNo) => {
     if (isSubmitted) return;
     setAttendance((prev) => ({
       ...prev,
-      [roll]: prev[roll] === "P" ? "A" : "P",
+      [regNo]: prev[regNo] === "P" ? "A" : "P",
     }));
   };
 
-  const handleSubmit = () => {
-    if (isSubmitted) return;
-    setIsSubmitted(true);
-
-    const key = `${department}_${year}_${date}`;
-    const savedLocks = JSON.parse(localStorage.getItem("attendanceLocks") || "{}");
-    const updatedLocks = {
-      ...savedLocks,
-      [key]: [...new Set([...(savedLocks[key] || []), Number(period)])],
+  const handleSubmit = async () => {
+    const payload = {
+      date,
+      department,
+      year: Number(year),
+      period: Number(period),
+      subject,
+      attendance: students.map((s) => ({
+        regNo: s.regNo, // FIXED
+        status: attendance[s.regNo] === "P" ? "Present" : "Absent",
+      })),
     };
-    localStorage.setItem("attendanceLocks", JSON.stringify(updatedLocks));
 
-    const savedData = JSON.parse(localStorage.getItem("attendanceData") || "{}");
-    const updatedData = {
-      ...savedData,
-      [key]: {
-        ...(savedData[key] || {}),
-        [period]: { subject, attendance },
-      },
-    };
-    localStorage.setItem("attendanceData", JSON.stringify(updatedData));
-
-    showAlert(`Attendance for Period ${period} Submitted!`, "success");
+    try {
+      await saveAttendance(payload);
+      alert("Attendance saved!");
+      setIsSubmitted(true);
+    } catch (err) {
+      alert("Failed to save attendance!");
+    }
   };
-
-  const availablePeriods = [1, 2, 3, 4, 5, 6, 7, 8].filter(
-    (p) => !lockedPeriods.includes(p)
-  );
 
   return (
     <div className="container py-3" style={{ maxWidth: "1100px" }}>
       
-      {/* PAGE HEADER */}
       <div className="mb-3 d-flex justify-content-between align-items-center">
         <h3 className="fw-bold text-primary">📘 Manage Attendance</h3>
 
@@ -143,36 +83,16 @@ const AttendancePage = () => {
           className="form-control shadow-sm fw-semibold"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          style={{
-            width: "180px",
-            border: "2px solid #2563eb",
-            borderRadius: "10px",
-          }}
+          style={{ width: "180px", border: "2px solid #2563eb", borderRadius: "10px" }}
         />
       </div>
 
-      {/* Toast */}
-      {showToast && (
-        <div
-          className={`alert alert-${showToast.type} position-fixed top-0 end-0 mt-3 me-3 shadow`}
-          style={{ zIndex: 5000, fontWeight: "600" }}
-        >
-          {showToast.message}
-        </div>
-      )}
-
-      {/* FILTER CARD */}
-      <div
-        className="card shadow-sm p-3 mb-3 border-0"
-        style={{ borderRadius: "12px" }}
-      >
+      {/* Filters */}
+      <div className="card shadow-sm p-3 mb-3 border-0">
         <div className="row g-3">
+
           <div className="col-md-3">
-            <select
-              className="form-select shadow-sm"
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-            >
+            <select className="form-select" value={department} onChange={(e) => setDepartment(e.target.value)}>
               <option value="">Department</option>
               <option>CSE</option>
               <option>ECE</option>
@@ -183,11 +103,7 @@ const AttendancePage = () => {
           </div>
 
           <div className="col-md-2">
-            <select
-              className="form-select shadow-sm"
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-            >
+            <select className="form-select" value={year} onChange={(e) => setYear(e.target.value)}>
               <option value="">Year</option>
               <option>1</option>
               <option>2</option>
@@ -197,13 +113,9 @@ const AttendancePage = () => {
           </div>
 
           <div className="col-md-2">
-            <select
-              className="form-select shadow-sm"
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-            >
+            <select className="form-select" value={period} onChange={(e) => setPeriod(e.target.value)}>
               <option value="">Period</option>
-              {availablePeriods.map((p) => (
+              {[1,2,3,4,5,6,7,8].map((p) => (
                 <option key={p}>{p}</option>
               ))}
             </select>
@@ -212,62 +124,51 @@ const AttendancePage = () => {
           <div className="col-md-5">
             <input
               type="text"
-              className="form-control shadow-sm"
+              className="form-control"
               placeholder="Enter Subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
             />
           </div>
+
         </div>
       </div>
 
+      {/* Load Btn */}
       {!isLoaded && (
-        <button
-          className="btn shadow-sm mb-3 w-100 text-white fw-bold"
-          style={{
-            background: "linear-gradient(90deg, #2563eb, #1e3a8a)",
-          }}
-          onClick={loadStudents}
-        >
-          🚀 Start Attendance
+        <button className="btn btn-primary w-100 fw-bold" onClick={loadStudents}>
+          🚀 Load Students
         </button>
       )}
 
       {/* Student List */}
-      {students.length > 0 && (
-        <div>
+      {isLoaded && (
+        <>
           {students.map((s) => (
-            <div
-              key={s.roll}
-              className="card shadow-sm mb-2 border-0"
-              style={{ borderRadius: "12px", background: "#f8faff" }}
-            >
-              <div className="card-body d-flex justify-content-between align-items-center">
+            <div key={s._id} className="card shadow-sm mb-2 border-0">
+              <div className="card-body d-flex justify-content-between">
                 <div>
-                  <strong>{s.roll}</strong>
+                  <strong>{s.regNo}</strong>
                   <div className="text-muted small">{s.name}</div>
                 </div>
 
                 <div
-                  onClick={() => toggleAttendance(s.roll)}
+                  onClick={() => toggleAttendance(s.regNo)} // FIXED
                   className={`fw-semibold px-3 py-1 rounded-pill ${
-                    attendance[s.roll] === "P"
-                      ? "bg-success-subtle border border-success text-success"
-                      : "bg-danger-subtle border border-danger text-danger"
+                    attendance[s.regNo] === "P"
+                      ? "bg-success-subtle text-success"
+                      : "bg-danger-subtle text-danger"
                   }`}
                   style={{ cursor: "pointer", minWidth: "110px", textAlign: "center" }}
                 >
-                  {attendance[s.roll] === "P" ? "Present" : "Absent"}
+                  {attendance[s.regNo] === "P" ? "Present" : "Absent"}
                 </div>
               </div>
             </div>
           ))}
 
           {!isSubmitted ? (
-            <button
-              className="btn btn-success w-100 fw-bold mt-3"
-              onClick={handleSubmit}
-            >
+            <button className="btn btn-success w-100 fw-bold mt-3" onClick={handleSubmit}>
               Submit Attendance
             </button>
           ) : (
@@ -275,32 +176,7 @@ const AttendancePage = () => {
               Attendance Submitted!
             </div>
           )}
-        </div>
-      )}
-
-      <div className="text-center mt-4">
-        <button
-          className="btn btn-outline-primary fw-semibold"
-          onClick={() => setShowTodaySummary(!showTodaySummary)}
-        >
-          📅 View Today's Summary
-        </button>
-      </div>
-
-      {showTodaySummary && (
-        <div className="card shadow-sm p-3 mt-3 border-0" style={{ borderRadius: "12px" }}>
-          <h5 className="fw-bold text-center mb-2">Today's Attendance Summary</h5>
-
-          {lockedPeriods.length === 0 ? (
-            <p className="text-center text-muted">No periods completed today.</p>
-          ) : (
-            lockedPeriods.map((p) => (
-              <div key={p} className="border-bottom py-2">
-                <strong>Period {p}</strong> — Submitted
-              </div>
-            ))
-          )}
-        </div>
+        </>
       )}
     </div>
   );
