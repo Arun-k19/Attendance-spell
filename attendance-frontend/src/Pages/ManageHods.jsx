@@ -36,34 +36,38 @@ export default function ManageHODs() {
 
   // SAVE / UPDATE
   const handleSave = async () => {
-    if (!formData.name.trim() || !formData.department.trim()) {
-      alert("Please fill all fields!");
-      return;
-    }
+  if (!formData.name.trim() || !formData.department.trim()) {
+    alert("Please fill all fields!");
+    return;
+  }
 
-    const payload = {
-      name: formData.name,
-      department: formData.department,
-      role: "HOD",
-      status: formData.status,
-    };
-
-    try {
-      if (editingHod) {
-        await axios.put(`${BASE_URL}/hod/${editingHod._id}`, payload);
-        alert("HOD Updated!");
-      } else {
-        await axios.post(`${BASE_URL}/hod/add`, payload);
-        alert("HOD Added!");
-      }
-
-      fetchHods();
-      setShowEditModal(false);
-      setEditingHod(null);
-    } catch (err) {
-      alert("Error saving HOD!");
-    }
+  const payload = {
+    name: formData.name,
+    department: formData.department,
+    role: "HOD",
+    status: formData.status, // boolean (checkbox)
   };
+
+  try {
+    if (editingHod) {
+      await axios.put(`${BASE_URL}/hod/${editingHod._id}`, payload);
+      alert("HOD Updated!");
+    } else {
+      // FIXED HERE
+      await axios.post(`${BASE_URL}/hod`, payload);
+      alert("HOD Added!");
+    }
+
+    fetchHods();
+    setShowEditModal(false);
+    setEditingHod(null);
+
+  } catch (err) {
+    // ⭐ Add this here
+    alert(err.response?.data?.message || "Error saving HOD!");
+  }
+};
+
 
   // DELETE
   const handleDelete = async (id) => {

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Papa from "papaparse";
-import HODSidebar from "../components/HOD/HODSidebar";
-import HODNavbar from "../components/HOD/HODNavbar";
+import HODSidebar from "../components/Hod/HODSidebar";
+import HODNavbar from "../components/Hod/HODNavbar";
 import ManageStudents from "../Pages/ManageStudents";
 import ManageStaffs from "../Pages/ManageStaffs";
 import AttendancePage from "../Pages/AttendancePage";

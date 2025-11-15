@@ -6,7 +6,8 @@ import Staff from "../models/Staff.js";
 const router = express.Router();
 
 // ➕ Add New HOD
-router.post("/add", async (req, res) => {
+// ➕ Add New HOD
+router.post("/", async (req, res) => {
   try {
     const { name, department, status } = req.body;
 
@@ -14,16 +15,37 @@ router.post("/add", async (req, res) => {
       return res.status(400).json({ message: "Name and Department are required" });
     }
 
-    const newHod = new Hod({ name, department, status });
+    // STEP 1: Convert department to UPPERCASE
+    const deptUpper = department.toUpperCase();
+
+    // STEP 2: Check if HOD already exists (case-insensitive)
+    const existingHod = await Hod.findOne({ department: deptUpper });
+
+    if (existingHod) {
+      return res.status(400).json({
+        message: `A HOD is already assigned for ${deptUpper} department`,
+      });
+    }
+
+    // STEP 3: Save in uppercase always
+    const newHod = new Hod({
+      name,
+      department: deptUpper,
+      status
+    });
+
     await newHod.save();
 
     res.status(201).json({ message: "HOD added successfully", hod: newHod });
+
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// 📋 Get All HODs (with optional filters)
+
+
+// 📋 Get All HODs
 router.get("/", async (req, res) => {
   try {
     const { department, search } = req.query;
@@ -85,41 +107,17 @@ router.get("/dashboard-counts/:department", async (req, res) => {
   try {
     const { department } = req.params;
 
-    // filter department
     const totalStudents = await Student.countDocuments({ department });
     const totalStaffs = await Staff.countDocuments({ department });
-
-    // optional: attendance calculation
-    // const today = new Date().toISOString().split("T")[0];
-    // const totalMarked = await Attendance.countDocuments({ department, date: today });
-    // const totalPresent = await Attendance.countDocuments({ department, date: today, status: "Present" });
-    // const attendancePercent = totalMarked > 0 ? Math.round((totalPresent / totalMarked) * 100) : 0;
 
     res.json({
       totalStudents,
       totalStaffs,
-      attendancePercent: 0 // replace with real value if attendance model added
+      attendancePercent: 0
     });
   } catch (err) {
-    console.error("❌ Error fetching HOD dashboard counts:", err);
     res.status(500).json({ message: err.message });
   }
 });
-
-// 🔹 Existing HOD routes remain same
-router.post("/add", async (req, res) => {
-  try {
-    const { name, department, status } = req.body;
-    if (!name || !department)
-      return res.status(400).json({ message: "Name and Department are required" });
-
-    const newHod = new Hod({ name, department, status });
-    await newHod.save();
-    res.status(201).json({ message: "HOD added successfully", hod: newHod });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
 
 export default router;
