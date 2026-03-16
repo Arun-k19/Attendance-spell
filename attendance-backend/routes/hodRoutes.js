@@ -105,17 +105,28 @@ router.delete("/:id", async (req, res) => {
 // 📊 HOD Dashboard — department-wise counts
 router.get("/dashboard-counts/:department", async (req, res) => {
   try {
-    const { department } = req.params;
+    const department = req.params.department.toUpperCase();
 
-    const totalStudents = await Student.countDocuments({ department });
-    const totalStaffs = await Staff.countDocuments({ department });
+    const totalStudents = await Student.countDocuments({
+      dept: department,
+    });
+
+    const totalStaff = await Staff.countDocuments({
+      dept: department,
+    });
+
+    console.log("Department:", department);
+    console.log("Students:", totalStudents);
+    console.log("Staff:", totalStaff);
 
     res.json({
       totalStudents,
-      totalStaffs,
-      attendancePercent: 0
+      totalStaff,
+      attendancePercent: 0,
     });
+
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: err.message });
   }
 });

@@ -113,8 +113,8 @@ function LoginPage() {
             >
               <option value="">Select Role</option>
               <option>Admin</option>
-              <option>Staff</option>
               <option>HOD</option>
+              <option>Staff</option>
             </select>
           </div>
 

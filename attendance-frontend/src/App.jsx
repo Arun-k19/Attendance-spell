@@ -4,8 +4,8 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import LoginPage from "./users/LoginPage";
 import AdminDashboard from "./users/AdminDashboard";
-import StaffDashboard from "./users/StaffDashboard";
 import HodDashboard from "./users/hodDashboard";// ✅ fixed casing (file + component name should match exactly)
+import StaffDashboard from "./users/StaffDashboard";
 
 function App() {
   return (
@@ -13,8 +13,8 @@ function App() {
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route path="/dashboard-admin" element={<AdminDashboard />} />
-        <Route path="/dashboard-staff" element={<StaffDashboard />} />
         <Route path="/dashboard-hod" element={<HodDashboard />} /> {/* ✅ fixed */}
+         <Route path="/dashboard-staff" element={<StaffDashboard />} />
       </Routes>
     </Router>
   );

@@ -4,8 +4,8 @@ import BASE_URL from "../config";
 // 🧩 Admin Dashboard Counts
 export const getDashboardCounts = async () => {
   try {
-    const res = await axios.get(`${BASE_URL}/admin/dashboard-counts`);
-    return res; // { data: { totalStudents, totalStaffs, totalHods, attendancePercent } }
+    const res = await axios.get(`${BASE_URL}/dashboard/admin-counts`);
+    return res;
   } catch (err) {
     console.error("❌ Error fetching Admin dashboard counts:", err);
     throw err;
@@ -16,7 +16,7 @@ export const getDashboardCounts = async () => {
 export const getHODDashboardCounts = async (department) => {
   try {
     const res = await axios.get(`${BASE_URL}/hod/dashboard-counts/${department}`);
-    return res; // { data: { totalStudents, totalStaffs, attendancePercent } }
+    return res;
   } catch (err) {
     console.error("❌ Error fetching HOD dashboard counts:", err);
     throw err;

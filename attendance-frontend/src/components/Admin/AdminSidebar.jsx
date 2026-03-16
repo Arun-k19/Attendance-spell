@@ -6,9 +6,9 @@ export default function AdminSidebar({ activeTab, setActiveTab, handleLogout }) 
 
   const menu = [
     { key: "dashboard", label: "Dashboard" },
-    { key: "manageStudents", label: "Manage Students" },
-    { key: "manageStaff", label: "Manage Staff" },
     { key: "manageHOD", label: "Manage HOD" },
+    { key: "manageStaff", label: "Manage Staff" },
+    { key: "manageStudents", label: "Manage Students" },
     { key: "attendance", label: "Attendance" },
     { key: "reports", label: "Reports" },
   ];

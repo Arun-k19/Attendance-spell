@@ -3,8 +3,8 @@ import React from "react";
 export default function HODSidebar({ activeTab, setActiveTab, handleLogout }) {
   const menu = [
     { key: "dashboard", label: "Dashboard" },
-    { key: "students", label: "Students" },
     { key: "staffs", label: "Staffs" },
+    { key: "students", label: "Students" },
     { key: "attendance", label: "Attendance" },
     { key: "reports", label: "Reports" },
   ];
