@@ -87,7 +87,7 @@ function LoginPage() {
       >
         {/* Logo */}
         <img
-          src="public/chendhuran-logo.png"
+          src="/chendhuran-logo.png"
           alt="College Logo"
           className="mb-3 mx-auto d-block"
           style={{
