@@ -1,346 +1,415 @@
 import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
+import { jsPDF } from "jspdf";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 const Reports = () => {
-  const [department, setDepartment] = useState("");
-  const [year, setYear] = useState("");
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
-  const [showReport, setShowReport] = useState(false);
-  const [report, setReport] = useState([]);
-  const [workingDays, setWorkingDays] = useState(null);
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [showToast, setShowToast] = useState(null);
 
-  // Holidays
-  const holidays = [
-    { date: "2025-01-26", name: "Republic Day" },
-    { date: "2025-08-15", name: "Independence Day" },
-    { date: "2025-10-02", name: "Gandhi Jayanti" },
-    { date: "2025-12-25", name: "Christmas" },
-  ];
+const [department,setDepartment]=useState("")
+const [year,setYear]=useState("")
+const [fromDate,setFromDate]=useState("")
+const [toDate,setToDate]=useState("")
+const [showReport,setShowReport]=useState(false)
+const [report,setReport]=useState([])
+const [workingDays,setWorkingDays]=useState(null)
+const [showToast,setShowToast]=useState(null)
+const [search,setSearch]=useState("")
+const [showDefaulters,setShowDefaulters]=useState(false)
 
-  useEffect(() => {
-    const today = new Date().toISOString().split("T")[0];
-    setToDate(today);
-  }, []);
+/* Example Student Data (Replace with DB later) */
+const students={
+"CSE11":"Arun",
+"CSE12":"Ravi",
+"CSE13":"Karthik",
+"CSE14":"Ajay"
+}
 
-  const showAlert = (message, type = "info") => {
-    setShowToast({ message, type });
-    setTimeout(() => setShowToast(null), 2500);
-  };
+const holidays=[
+{date:"2025-01-26",name:"Republic Day"},
+{date:"2025-08-15",name:"Independence Day"},
+{date:"2025-10-02",name:"Gandhi Jayanti"},
+{date:"2025-12-25",name:"Christmas"}
+]
 
-  // 📅 Smart Date Validation
-  const handleSmartDate = (type, value) => {
-    const dateObj = new Date(value);
+useEffect(()=>{
+const today=new Date().toISOString().split("T")[0]
+setToDate(today)
+},[])
 
-    if (dateObj > new Date()) {
-      showAlert("⛔ Future date cannot be selected!", "danger");
-      return;
-    }
-    if (dateObj.getDay() === 0) {
-      showAlert("🚫 Sunday is not a working day!", "danger");
-      return;
-    }
-    const holiday = holidays.find((h) => h.date === value);
-    if (holiday) {
-      showAlert(`🎌 ${holiday.name} — Holiday`, "warning");
-      return;
-    }
+const showAlert=(msg,type="info")=>{
+setShowToast({msg,type})
+setTimeout(()=>setShowToast(null),2500)
+}
 
-    type === "from" ? setFromDate(value) : setToDate(value);
-  };
+const handleSmartDate=(type,value)=>{
 
-  // 🧮 Working Days Calculation
-  useEffect(() => {
-    if (fromDate && toDate) {
-      const s = new Date(fromDate);
-      const e = new Date(toDate);
+const dateObj=new Date(value)
 
-      if (s > e) {
-        setWorkingDays(null);
-        showAlert("⚠️ From date cannot be after To date!", "danger");
-        return;
-      }
+if(dateObj>new Date()){
+showAlert("Future date not allowed","danger")
+return
+}
 
-      let count = 0;
-      const temp = new Date(s);
-      while (temp <= e) {
-        const d = temp.getDay();
-        const dStr = temp.toISOString().split("T")[0];
-        const isHoliday = holidays.some((h) => h.date === dStr);
+if(dateObj.getDay()===0){
+showAlert("Sunday is holiday","danger")
+return
+}
 
-        if (d !== 0 && d !== 6 && !isHoliday) count++;
-        temp.setDate(temp.getDate() + 1);
-      }
-      setWorkingDays(count);
-    }
-  }, [fromDate, toDate]);
+const holiday=holidays.find(h=>h.date===value)
 
-  // 📊 Report Calculation
-  const calculateReport = () => {
-    const stored = JSON.parse(localStorage.getItem("attendanceData") || "{}");
+if(holiday){
+showAlert(`${holiday.name} Holiday`,"warning")
+return
+}
 
-    if (!Object.keys(stored).length) {
-      showAlert("No attendance data found!", "danger");
-      return;
-    }
+type==="from"?setFromDate(value):setToDate(value)
 
-    const final = [];
-    const s = new Date(fromDate);
-    const e = new Date(toDate);
+}
 
-    Object.keys(stored).forEach((key) => {
-      const [dept, yr, date] = key.split("_");
-      const dObj = new Date(date);
+useEffect(()=>{
 
-      if (
-        (department && dept !== department) ||
-        (year && yr !== year) ||
-        dObj < s ||
-        dObj > e
-      )
-        return;
+if(!fromDate || !toDate) return
 
-      const periods = stored[key];
-      Object.keys(periods).forEach((p) => {
-        const { attendance } = periods[p];
+const s=new Date(fromDate)
+const e=new Date(toDate)
 
-        Object.entries(attendance).forEach(([roll, status]) => {
-          let stu = final.find((r) => r.roll === roll);
+let count=0
+const temp=new Date(s)
 
-          if (!stu)
-            final.push({
-              roll,
-              dept,
-              yr,
-              total: 0,
-              present: 0,
-            });
+while(temp<=e){
 
-          stu = final.find((r) => r.roll === roll);
-          stu.total++;
-          if (status === "P") stu.present++;
-        });
-      });
-    });
+const d=temp.getDay()
+const dStr=temp.toISOString().split("T")[0]
+const isHoliday=holidays.some(h=>h.date===dStr)
 
-    final.forEach((s) => {
-      s.percentage = s.total
-        ? ((s.present / s.total) * 100).toFixed(1)
-        : 0;
-    });
+if(d!==0 && d!==6 && !isHoliday) count++
 
-    setReport(final);
-    setShowReport(true);
-  };
+temp.setDate(temp.getDate()+1)
 
-  // Excel Export
-  const exportToExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(report);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Attendance Report");
-    XLSX.writeFile(wb, "Attendance_Report.xlsx");
-  };
+}
 
-  return (
-    <section className="container py-3" style={{ maxWidth: "1100px" }}>
-      
-      {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h3 className="fw-bold text-primary">📊 Attendance Reports</h3>
-      </div>
+setWorkingDays(count)
 
-      {/* Toast */}
-      {showToast && (
-        <div
-          className={`position-fixed top-0 end-0 mt-3 me-3 alert alert-${showToast.type}`}
-          style={{ zIndex: 9999 }}
-        >
-          {showToast.message}
-        </div>
-      )}
+},[fromDate,toDate])
 
-      {/* Filters */}
-      <div className="card shadow-sm border-0 p-3 mb-3" style={{ borderRadius: "12px" }}>
-        <div className="row g-2">
+const calculateReport=()=>{
 
-          <div className="col-md-2">
-            <select
-              className="form-select shadow-sm"
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-            >
-              <option value="">Department</option>
-              <option value="CSE">CSE</option>
-              <option value="ECE">ECE</option>
-              <option value="EEE">EEE</option>
-              <option value="MECH">MECH</option>
-              <option value="CIVIL">CIVIL</option>
-            </select>
-          </div>
+const stored=JSON.parse(localStorage.getItem("attendanceData")||"{}")
 
-          <div className="col-md-2">
-            <select
-              className="form-select shadow-sm"
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-            >
-              <option value="">Year</option>
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-              <option value="4">4</option>
-            </select>
-          </div>
+if(!stored || Object.keys(stored).length===0){
+showAlert("No attendance data","danger")
+return
+}
 
-          <div className="col-md-3">
-            <input
-              type="date"
-              className="form-control shadow-sm"
-              value={fromDate}
-              onChange={(e) => handleSmartDate("from", e.target.value)}
-            />
-          </div>
+const final=[]
+const s=new Date(fromDate)
+const e=new Date(toDate)
 
-          <div className="col-md-3">
-            <input
-              type="date"
-              className="form-control shadow-sm"
-              value={toDate}
-              onChange={(e) => handleSmartDate("to", e.target.value)}
-            />
-          </div>
+Object.keys(stored).forEach(key=>{
 
-          <div className="col-md-2 d-grid">
-            <button
-              className="btn text-white fw-bold shadow-sm"
-              style={{
-                background: "linear-gradient(90deg,#22c55e,#16a34a)",
-              }}
-              onClick={calculateReport}
-            >
-              📄 View
-            </button>
-          </div>
-        </div>
-      </div>
+const [dept,yr,date]=key.split("_")
+const dObj=new Date(date)
 
-      {/* Working Days */}
-      {workingDays !== null && (
-        <div className="alert alert-info fw-semibold text-center">
-          🗓 Total Working Days: {workingDays}
-        </div>
-      )}
+if(
+(department && dept!==department) ||
+(year && yr!==year) ||
+dObj<s || dObj>e
+)return
 
-      {/* Report Table */}
-      {showReport && (
-        <div className="card shadow-sm border-0 p-3" style={{ borderRadius: "12px" }}>
+const periods=stored[key]
 
-          <div className="d-flex justify-content-between">
-            <h5 className="fw-bold text-primary">Attendance Summary</h5>
+Object.keys(periods).forEach(p=>{
 
-            <button
-              className="btn btn-outline-primary"
-              onClick={exportToExcel}
-            >
-              📘 Export
-            </button>
-          </div>
+const {attendance}=periods[p]
 
-          <table className="table table-hover mt-3">
-            <thead style={{ background: "#2563eb", color: "white" }}>
-              <tr>
-                <th>Roll No</th>
-                <th>Dept</th>
-                <th>Year</th>
-                <th>Present</th>
-                <th>Total</th>
-                <th>%</th>
-              </tr>
-            </thead>
+Object.entries(attendance).forEach(([roll,status])=>{
 
-            <tbody>
-              {report.map((r) => (
-                <tr
-                  key={r.roll}
-                  style={{ cursor: "pointer" }}
-                  onClick={() => setSelectedStudent(r)}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.background = "#eef3ff")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.background = "white")
-                  }
-                >
-                  <td className="fw-bold">{r.roll}</td>
-                  <td>{r.dept}</td>
-                  <td>{r.yr}</td>
-                  <td>{r.present}</td>
-                  <td>{r.total}</td>
-                  <td
-                    className={
-                      r.percentage >= 75
-                        ? "text-success fw-bold"
-                        : "text-danger fw-bold"
-                    }
-                  >
-                    {r.percentage}%
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+let stu=final.find(r=>r.roll===roll)
 
-      {/* Modal Student */}
-      {selectedStudent && (
-        <div
-          className="modal show fade d-block"
-          style={{ background: "rgba(0,0,0,0.5)" }}
-        >
-          <div className="modal-dialog">
-            <div className="modal-content p-3 shadow-lg" style={{ borderRadius: "15px" }}>
+if(!stu){
 
-              <div className="modal-header">
-                <h5 className="fw-bold text-primary">{selectedStudent.roll}</h5>
-                <button className="btn-close" onClick={() => setSelectedStudent(null)}></button>
-              </div>
+stu={
+roll,
+name:students[roll] || "Unknown",
+present:0,
+total:0
+}
 
-              <div className="modal-body">
-                <p><b>Dept:</b> {selectedStudent.dept}</p>
-                <p><b>Year:</b> {selectedStudent.yr}</p>
-                <p><b>Total Periods:</b> {selectedStudent.total}</p>
-                <p><b>Present:</b> {selectedStudent.present}</p>
-                <p><b>Absent:</b> {selectedStudent.total - selectedStudent.present}</p>
-                <p>
-                  <b>Attendance:</b>{" "}
-                  <span
-                    className={
-                      selectedStudent.percentage >= 75
-                        ? "text-success fw-bold"
-                        : "text-danger fw-bold"
-                    }
-                  >
-                    {selectedStudent.percentage}%
-                  </span>
-                </p>
-              </div>
+final.push(stu)
 
-              <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setSelectedStudent(null)}>
-                  Close
-                </button>
-              </div>
+}
 
-            </div>
-          </div>
-        </div>
-      )}
-    </section>
-  );
-};
+stu.total++
 
-export default Reports;
+if(status==="P") stu.present++
+
+})
+
+})
+
+})
+
+final.forEach(s=>{
+
+s.absent=s.total-s.present
+
+s.percentage=s.total?
+((s.present/s.total)*100).toFixed(1):0
+
+})
+
+setReport(final)
+setShowReport(true)
+
+}
+
+const exportExcel=()=>{
+
+const data=[
+{Department:department,Year:year},
+{},
+...report
+]
+
+const ws=XLSX.utils.json_to_sheet(data)
+const wb=XLSX.utils.book_new()
+
+XLSX.utils.book_append_sheet(wb,ws,"Attendance")
+
+XLSX.writeFile(wb,"Attendance_Report.xlsx")
+
+}
+
+const exportPDF=()=>{
+
+const doc=new jsPDF()
+
+doc.text(`Attendance Report`,20,20)
+doc.text(`Department : ${department}`,20,30)
+doc.text(`Year : ${year}`,120,30)
+
+let y=40
+
+report.forEach(r=>{
+
+doc.text(
+`${r.roll}   ${r.name}   ${r.present}/${r.total}   ${r.percentage}%`,
+20,
+y
+)
+
+y+=10
+
+})
+
+doc.save("Attendance_Report.pdf")
+
+}
+
+const filtered=report.filter(r=>
+r.roll.toLowerCase().includes(search.toLowerCase())
+)
+
+const defaulters=report.filter(r=>r.percentage<75)
+
+const classAvg=report.length?
+(
+report.reduce((a,b)=>a+Number(b.percentage),0)
+/
+report.length
+).toFixed(1):0
+
+const displayData=showDefaulters?defaulters:filtered
+
+return(
+
+<section className="container py-3" style={{maxWidth:"1100px"}}>
+
+<h3 className="fw-bold text-primary mb-3">
+Attendance Reports
+</h3>
+
+{showToast &&(
+<div className={`alert alert-${showToast.type}`}>
+{showToast.msg}
+</div>
+)}
+
+<div className="card p-3 shadow-sm mb-3">
+
+<div className="row g-2">
+
+<div className="col-md-2">
+<select className="form-select"
+value={department}
+onChange={e=>setDepartment(e.target.value)}>
+<option value="">Department</option>
+<option value="CSE">CSE</option>
+<option value="ECE">ECE</option>
+<option value="EEE">EEE</option>
+<option value="MECH">MECH</option>
+<option value="CIVIL">CIVIL</option>
+</select>
+</div>
+
+<div className="col-md-2">
+<select className="form-select"
+value={year}
+onChange={e=>setYear(e.target.value)}>
+<option value="">Year</option>
+<option value="1">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+<option value="4">4</option>
+</select>
+</div>
+
+<div className="col-md-3">
+<input type="date"
+className="form-control"
+value={fromDate}
+onChange={e=>handleSmartDate("from",e.target.value)}/>
+</div>
+
+<div className="col-md-3">
+<input type="date"
+className="form-control"
+value={toDate}
+onChange={e=>handleSmartDate("to",e.target.value)}/>
+</div>
+
+<div className="col-md-2 d-grid">
+<button className="btn btn-success"
+onClick={calculateReport}>
+View
+</button>
+</div>
+
+</div>
+
+</div>
+
+{workingDays!==null &&
+<div className="alert alert-info text-center">
+Working Days : {workingDays}
+</div>
+}
+
+{showReport &&(
+
+<>
+
+{/* Class Info */}
+<div className="fw-bold text-primary mb-2">
+
+Department : {department} &nbsp;&nbsp;
+Year : {year}
+
+</div>
+
+<div className="row mb-3">
+
+<div className="col-md-4">
+<div className="card p-3 shadow">
+<h6>Total Students</h6>
+<h4>{report.length}</h4>
+</div>
+</div>
+
+<div className="col-md-4">
+<div className="card p-3 shadow">
+<h6>Class Average</h6>
+<h4>{classAvg}%</h4>
+</div>
+</div>
+
+<div className="col-md-4">
+<div className="card p-3 shadow">
+<h6>Defaulters</h6>
+<h4>{defaulters.length}</h4>
+</div>
+</div>
+
+</div>
+
+<div className="mb-3 d-flex gap-2">
+
+<input
+type="text"
+placeholder="Search roll number"
+className="form-control"
+value={search}
+onChange={e=>setSearch(e.target.value)}
+/>
+
+<button
+className="btn btn-warning"
+onClick={()=>setShowDefaulters(!showDefaulters)}>
+Defaulters
+</button>
+
+<button
+className="btn btn-primary"
+onClick={exportExcel}>
+Excel
+</button>
+
+<button
+className="btn btn-danger"
+onClick={exportPDF}>
+PDF
+</button>
+
+</div>
+
+<table className="table table-hover">
+
+<thead className="table-primary">
+
+<tr>
+<th>Roll</th>
+<th>Name</th>
+<th>Present</th>
+<th>Absent</th>
+<th>Total</th>
+<th>%</th>
+</tr>
+
+</thead>
+
+<tbody>
+
+{displayData.map(r=>(
+<tr key={r.roll}>
+<td>{r.roll}</td>
+<td>{r.name}</td>
+<td>{r.present}</td>
+<td>{r.absent}</td>
+<td>{r.total}</td>
+
+<td className={
+r.percentage>=75?
+"text-success fw-bold":
+"text-danger fw-bold"
+}>
+{r.percentage}%
+</td>
+
+</tr>
+))}
+
+</tbody>
+
+</table>
+
+</>
+
+)}
+
+</section>
+
+)
+
+}
+
+export default Reports
