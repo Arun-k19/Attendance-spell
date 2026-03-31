@@ -27,7 +27,7 @@ export default function ManageStudents() {
   // ===================== FETCH =====================
   const fetchStudents = async () => {
     try {
-      const res = await axios.get("http://localhost:3001/api/students");
+      const res = await axios.get("https://attendance-spell-management.onrender.com/api/students");
       setStudents(res.data);
       setFilteredStudents(res.data);
     } catch (err) {
@@ -67,7 +67,7 @@ export default function ManageStudents() {
     formData.append("file", stuFile);
 
     try {
-      await axios.post("http://localhost:3001/api/students/upload", formData);
+      await axios.post("https://attendance-spell-management.onrender.com/api/students/upload", formData);
       alert("Uploaded!");
       fetchStudents();
     } catch (err) {
@@ -104,7 +104,7 @@ export default function ManageStudents() {
       return alert("Fill all fields!");
 
     try {
-      await axios.post("http://localhost:3001/api/students/add", newStudent);
+      await axios.post("https://attendance-spell-management.onrender.com/api/students/add", newStudent);
       alert("Added!");
       setNewStudent({ regNo: "", name: "", dept: "", year: "" });
       fetchStudents();
@@ -118,7 +118,7 @@ export default function ManageStudents() {
     if (!window.confirm("Delete this student?")) return;
 
     try {
-      await axios.delete(`http://localhost:3001/api/students/${regNo}`);
+      await axios.delete(`https://attendance-spell-management.onrender.com/api/students/${regNo}`);
       fetchStudents();
       setSelectedStudent(null);
     } catch (err) {
@@ -130,7 +130,7 @@ export default function ManageStudents() {
   const handleUpdateStudent = async () => {
     try {
       await axios.put(
-        `http://localhost:3001/api/students/${selectedStudent.regNo}`,
+        `https://attendance-spell-management.onrender.com/api/students/${selectedStudent.regNo}`,
         selectedStudent
       );
       alert("Updated!");

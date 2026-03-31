@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:3001/api/staff"; // backend URL
+const API_URL = "https://attendance-spell-management.onrender.com/api/staff"; // backend URL
 
 export const getAllStaff = () => axios.get(API_URL);
 export const addStaff = (staffData) => axios.post(`${API_URL}/add`, staffData);
