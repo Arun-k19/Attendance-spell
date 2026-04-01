@@ -50,11 +50,9 @@ const AttendancePage = () => {
   };
 
   // 🔥 AUTO CALL WHEN CHANGE
-useEffect(() => {
-  if (department && year) {
+  useEffect(() => {
     fetchTakenPeriods();
-  }
-}, [department, year, date]);
+  }, [department, year, date]);
 
 
   const loadStudents = async () => {

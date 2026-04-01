@@ -1,9 +1,9 @@
 import React from "react";
-
+import { BsList, BsCalendarDate, BsPersonBadge } from "react-icons/bs";
 
 export default function StaffNavbar({ now }) {
   const staffName =
-    localStorage.getItem("staffName") || "Staff Member"; // optional
+    localStorage.getItem("staffName") || "Staff Member";
 
   return (
     <header
@@ -15,7 +15,8 @@ export default function StaffNavbar({ now }) {
     >
       {/* Left Section */}
       <div className="d-flex align-items-center gap-3">
-        {/* 📱 Sidebar Toggle (Mobile Only) */}
+
+        {/* Sidebar Toggle */}
         <button
           className="btn btn-outline-light d-md-none"
           type="button"
@@ -27,14 +28,14 @@ export default function StaffNavbar({ now }) {
           <BsList size={20} />
         </button>
 
-        {/* 👨‍🏫 Staff Info */}
+        {/* Staff Info */}
         <div>
           <h5 className="mb-0 fw-semibold">Welcome, {staffName}</h5>
           <small className="text-white-50">Staff Dashboard</small>
         </div>
       </div>
 
-      {/* Right Section — Date/Time */}
+      {/* Right Section */}
       <div className="d-flex align-items-center gap-3">
         <div className="d-flex align-items-center bg-white text-dark px-3 py-1 rounded shadow-sm">
           <BsCalendarDate className="me-2 text-primary" size={16} />

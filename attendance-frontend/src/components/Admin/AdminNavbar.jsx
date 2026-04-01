@@ -1,7 +1,6 @@
 import React from "react";
 
 export default function AdminNavbar({ now }) {
-  // offcanvas target id must match AdminSidebar's id
   return (
     <header
       className="d-flex align-items-center justify-content-between px-3 py-2"
@@ -11,7 +10,8 @@ export default function AdminNavbar({ now }) {
       }}
     >
       <div className="d-flex align-items-center gap-3">
-        {/* mobile toggle for offcanvas sidebar */}
+
+        {/* mobile sidebar toggle */}
         <button
           className="btn btn-outline-light d-md-none"
           type="button"
@@ -37,8 +37,11 @@ export default function AdminNavbar({ now }) {
 
         <div className="ms-1">
           <h5 className="mb-0">Welcome, Admin</h5>
-          <small className="text-white-50">Attendance Management System</small>
+          <small className="text-white-50">
+            Attendance Management System
+          </small>
         </div>
+
       </div>
 
       <div className="d-flex align-items-center gap-2">

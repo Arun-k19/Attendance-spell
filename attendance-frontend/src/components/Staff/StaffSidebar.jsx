@@ -12,17 +12,16 @@ export default function StaffSidebar({ activeTab, setActiveTab, handleLogout }) 
 
   // helper to render each link
   const renderLink = (m) => (
-    <a
-      href="#"
-      onClick={(e) => {
-        e.preventDefault();
-        setActiveTab(m.key);
-      }}
-      className={`nav-link text-start ${activeTab === m.key ? "active" : ""}`}
-      data-bs-dismiss="offcanvas"
-    >
-      {m.label}
-    </a>
+<button
+  type="button"
+  onClick={() => setActiveTab(m.key)}
+  className={`nav-link text-start w-100 border-0 bg-transparent ${
+    activeTab === m.key ? "active" : ""
+  }`}
+  data-bs-dismiss="offcanvas"
+>
+  {m.label}
+</button>
   );
 
   return (

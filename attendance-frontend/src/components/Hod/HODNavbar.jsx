@@ -10,6 +10,8 @@ export default function HODNavbar({ now, dept }) {
       }}
     >
       <div className="d-flex align-items-center gap-3">
+
+        {/* Sidebar Toggle Button */}
         <button
           className="btn btn-outline-light d-md-none"
           type="button"
@@ -18,8 +20,14 @@ export default function HODNavbar({ now, dept }) {
           aria-controls="hodSidebar"
           aria-label="Open sidebar"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor"
-            className="bi bi-list" viewBox="0 0 16 16">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            fill="currentColor"
+            className="bi bi-list"
+            viewBox="0 0 16 16"
+          >
             <path
               fillRule="evenodd"
               d="M2.5 12.5a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1h-10a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1h-10a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1h-10a.5.5 0 0 1-.5-.5z"
@@ -31,6 +39,7 @@ export default function HODNavbar({ now, dept }) {
           <h5 className="mb-0">Welcome, HOD</h5>
           <small className="text-white-50">{dept} Department</small>
         </div>
+
       </div>
 
       <div className="d-flex align-items-center gap-2">
