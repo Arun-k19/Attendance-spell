@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
-import axios from "axios"; // ✅ ADD
-import "bootstrap/dist/css/bootstrap.min.css";
+import axios from "axios";
 
 const Reports = () => {
 
@@ -35,6 +34,7 @@ setTimeout(()=>setShowToast(null),2500)
 }
 
 const handleSmartDate=(type,value)=>{
+
 const dateObj=new Date(value)
 
 if(dateObj>new Date()){
@@ -55,9 +55,11 @@ return
 }
 
 type==="from"?setFromDate(value):setToDate(value)
+
 }
 
 useEffect(()=>{
+
 if(!fromDate || !toDate) return
 
 const s=new Date(fromDate)
@@ -67,6 +69,7 @@ let count=0
 const temp=new Date(s)
 
 while(temp<=e){
+
 const d=temp.getDay()
 const dStr=temp.toISOString().split("T")[0]
 const isHoliday=holidays.some(h=>h.date===dStr)
@@ -74,13 +77,14 @@ const isHoliday=holidays.some(h=>h.date===dStr)
 if(d!==0 && d!==6 && !isHoliday) count++
 
 temp.setDate(temp.getDate()+1)
+
 }
 
 setWorkingDays(count)
 
 },[fromDate,toDate])
 
-// 🔥 MAIN CHANGE HERE
+// FETCH REPORT
 const calculateReport = async () => {
 
 if (!department || !year || !fromDate || !toDate) {
@@ -147,22 +151,33 @@ setReport(final)
 setShowReport(true)
 
 }catch(err){
+
 console.error(err)
 showAlert("Error fetching report","danger")
-}
 
 }
 
+}
+
+// EXPORT EXCEL
 const exportExcel=()=>{
+
 const data=[{Department:department,Year:year},{},...report]
+
 const ws=XLSX.utils.json_to_sheet(data)
 const wb=XLSX.utils.book_new()
+
 XLSX.utils.book_append_sheet(wb,ws,"Attendance")
+
 XLSX.writeFile(wb,"Attendance_Report.xlsx")
+
 }
 
+// EXPORT PDF
 const exportPDF=()=>{
+
 const doc=new jsPDF()
+
 doc.text(`Attendance Report`,20,20)
 doc.text(`Department : ${department}`,20,30)
 doc.text(`Year : ${year}`,120,30)
@@ -170,18 +185,24 @@ doc.text(`Year : ${year}`,120,30)
 let y=40
 
 report.forEach(r=>{
+
 doc.text(`${r.roll} ${r.name} ${r.present}/${r.total} ${r.percentage}%`,20,y)
+
 y+=10
+
 })
 
 doc.save("Attendance_Report.pdf")
+
 }
 
-const filtered=report.filter(r=>
-r.roll?.toLowerCase().includes(search.toLowerCase())
+// SEARCH
+const filtered = report.filter(r =>
+r.roll?.toLowerCase().includes(search.toLowerCase()) ||
+r.name?.toLowerCase().includes(search.toLowerCase())
 )
 
-const defaulters=report.filter(r=>r.percentage<75)
+const defaulters = report.filter(r=>r.percentage<75)
 
 const classAvg=report.length?
 (report.reduce((a,b)=>a+Number(b.percentage),0)/report.length).toFixed(1):0
@@ -189,6 +210,7 @@ const classAvg=report.length?
 const displayData=showDefaulters?defaulters:filtered
 
 return(
+
 <section className="container py-3" style={{maxWidth:"1100px"}}>
 
 <h3 className="fw-bold text-primary mb-3">
@@ -206,95 +228,165 @@ Attendance Reports
 <div className="row g-2">
 
 <div className="col-md-2">
+
 <select className="form-select"
 value={department}
 onChange={e=>setDepartment(e.target.value)}>
+
 <option value="">Department</option>
 <option value="CSE">CSE</option>
 <option value="ECE">ECE</option>
 <option value="EEE">EEE</option>
 <option value="MECH">MECH</option>
 <option value="CIVIL">CIVIL</option>
+
 </select>
+
 </div>
 
 <div className="col-md-2">
+
 <select className="form-select"
 value={year}
 onChange={e=>setYear(e.target.value)}>
+
 <option value="">Year</option>
 <option value="1">1</option>
 <option value="2">2</option>
 <option value="3">3</option>
 <option value="4">4</option>
+
 </select>
+
 </div>
 
 <div className="col-md-3">
-<input type="date" className="form-control"
+
+<input
+type="date"
+className="form-control"
 value={fromDate}
-onChange={e=>handleSmartDate("from",e.target.value)}/>
+onChange={e=>handleSmartDate("from",e.target.value)}
+/>
+
 </div>
 
 <div className="col-md-3">
-<input type="date" className="form-control"
+
+<input
+type="date"
+className="form-control"
 value={toDate}
-onChange={e=>handleSmartDate("to",e.target.value)}/>
+onChange={e=>handleSmartDate("to",e.target.value)}
+/>
+
 </div>
 
 <div className="col-md-2 d-grid">
-<button className="btn btn-success"
-onClick={calculateReport}>
+
+<button
+className="btn btn-success"
+onClick={calculateReport}
+>
 View
 </button>
+
 </div>
 
 </div>
+
 </div>
 
 {workingDays!==null &&
+
 <div className="alert alert-info text-center">
 Working Days : {workingDays}
 </div>
+
 }
 
 {showReport &&(
+
 <>
+
 <div className="fw-bold text-primary mb-2">
+
 Department : {department} &nbsp;&nbsp;
 Year : {year}
+
+</div>
+
+<input
+className="form-control mb-2"
+placeholder="Search by Roll or Name"
+value={search}
+onChange={e=>setSearch(e.target.value)}
+/>
+
+<div className="mb-2">
+
+<button
+className="btn btn-outline-primary me-2"
+onClick={exportExcel}
+>
+Export Excel
+</button>
+
+<button
+className="btn btn-outline-danger"
+onClick={exportPDF}
+>
+Export PDF
+</button>
+
 </div>
 
 <table className="table table-hover">
+
 <thead className="table-primary">
+
 <tr>
+
 <th>Roll</th>
 <th>Name</th>
 <th>Present</th>
 <th>Absent</th>
 <th>Total</th>
 <th>%</th>
+
 </tr>
+
 </thead>
 
 <tbody>
+
 {displayData.map(r=>(
+
 <tr key={r.roll}>
+
 <td>{r.roll}</td>
 <td>{r.name}</td>
 <td>{r.present}</td>
 <td>{r.absent}</td>
 <td>{r.total}</td>
 <td>{r.percentage}%</td>
+
 </tr>
+
 ))}
+
 </tbody>
+
 </table>
+
 </>
+
 )}
 
 </section>
+
 )
+
 }
 
 export default Reports

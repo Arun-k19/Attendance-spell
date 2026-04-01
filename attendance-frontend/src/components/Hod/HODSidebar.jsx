@@ -9,19 +9,18 @@ export default function HODSidebar({ activeTab, setActiveTab, handleLogout }) {
     { key: "reports", label: "Reports" },
   ];
 
-  const renderLink = (m) => (
-    <a
-      href="#"
-      onClick={(e) => {
-        e.preventDefault();
-        setActiveTab(m.key);
-      }}
-      className={`nav-link text-start ${activeTab === m.key ? "active" : ""}`}
-      data-bs-dismiss="offcanvas"
-    >
-      {m.label}
-    </a>
-  );
+ const renderLink = (m) => (
+  <button
+    type="button"
+    onClick={() => setActiveTab(m.key)}
+    className={`nav-link text-start w-100 border-0 bg-transparent ${
+      activeTab === m.key ? "active" : ""
+    }`}
+    data-bs-dismiss="offcanvas"
+  >
+    {m.label}
+  </button>
+);
 
   return (
     <>
