@@ -50,9 +50,11 @@ const AttendancePage = () => {
   };
 
   // 🔥 AUTO CALL WHEN CHANGE
-  useEffect(() => {
+useEffect(() => {
+  if (department && year) {
     fetchTakenPeriods();
-  }, [department, year, date]);
+  }
+}, [department, year, date]);
 
 
   const loadStudents = async () => {
@@ -149,29 +151,30 @@ const AttendancePage = () => {
   };
 
 
-  const availablePeriods=allPeriods.filter(p=>{
-    if(!department || !year) return true;
+const availablePeriods = allPeriods.filter((p) => {
+  if (!department || !year) return true;
 
-    const taken=attendanceRecords.find(r=>
-      r.department===department &&
-      r.year===year &&
-      r.date===date &&
-      r.period===p
-    );
+  const taken = attendanceRecords.some(
+    (r) =>
+      String(r.department).toLowerCase() === String(department).toLowerCase() &&
+      String(r.year) === String(year) &&
+      r.date === date &&
+      Number(r.period) === Number(p)
+  );
 
-    return !taken;
-  });
-
+  return !taken;
+});
 
   const completedPeriods = attendanceRecords
-    .filter(
-      (r)=>
-        r.department===department &&
-        r.year===year &&
-        r.date===date
-    )
-    .map(r=>r.period)
-    .sort((a,b)=>a-b);
+  .filter(
+    (r) =>
+      String(r.department).toLowerCase() ===
+        String(department).toLowerCase() &&
+      String(r.year) === String(year) &&
+      r.date === date
+  )
+  .map((r) => Number(r.period))
+  .sort((a, b) => a - b);
 
 
   const filteredStudents = students.filter(s =>
