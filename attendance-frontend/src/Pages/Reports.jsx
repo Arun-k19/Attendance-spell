@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
+import axios from "axios"; // ✅ ADD
 import "bootstrap/dist/css/bootstrap.min.css";
 
 const Reports = () => {
@@ -15,14 +16,6 @@ const [workingDays,setWorkingDays]=useState(null)
 const [showToast,setShowToast]=useState(null)
 const [search,setSearch]=useState("")
 const [showDefaulters,setShowDefaulters]=useState(false)
-
-/* Example Student Data (Replace with DB later) */
-const students={
-"CSE11":"Arun",
-"CSE12":"Ravi",
-"CSE13":"Karthik",
-"CSE14":"Ajay"
-}
 
 const holidays=[
 {date:"2025-01-26",name:"Republic Day"},
@@ -42,7 +35,6 @@ setTimeout(()=>setShowToast(null),2500)
 }
 
 const handleSmartDate=(type,value)=>{
-
 const dateObj=new Date(value)
 
 if(dateObj>new Date()){
@@ -63,11 +55,9 @@ return
 }
 
 type==="from"?setFromDate(value):setToDate(value)
-
 }
 
 useEffect(()=>{
-
 if(!fromDate || !toDate) return
 
 const s=new Date(fromDate)
@@ -77,7 +67,6 @@ let count=0
 const temp=new Date(s)
 
 while(temp<=e){
-
 const d=temp.getDay()
 const dStr=temp.toISOString().split("T")[0]
 const isHoliday=holidays.some(h=>h.date===dStr)
@@ -85,105 +74,95 @@ const isHoliday=holidays.some(h=>h.date===dStr)
 if(d!==0 && d!==6 && !isHoliday) count++
 
 temp.setDate(temp.getDate()+1)
-
 }
 
 setWorkingDays(count)
 
 },[fromDate,toDate])
 
-const calculateReport=()=>{
+// 🔥 MAIN CHANGE HERE
+const calculateReport = async () => {
 
-const stored=JSON.parse(localStorage.getItem("attendanceData")||"{}")
+if (!department || !year || !fromDate || !toDate) {
+showAlert("Fill all fields","danger")
+return
+}
 
-if(!stored || Object.keys(stored).length===0){
+try {
+
+const res = await axios.get("http://localhost:3001/api/attendance/report",{
+params:{
+department,
+year,
+from:fromDate,
+to:toDate
+}
+})
+
+const records = res.data
+
+if(!records.length){
 showAlert("No attendance data","danger")
 return
 }
 
 const final=[]
-const s=new Date(fromDate)
-const e=new Date(toDate)
 
-Object.keys(stored).forEach(key=>{
+records.forEach(rec=>{
 
-const [dept,yr,date]=key.split("_")
-const dObj=new Date(date)
+rec.attendance.forEach(a=>{
 
-if(
-(department && dept!==department) ||
-(year && yr!==year) ||
-dObj<s || dObj>e
-)return
+const roll = a.studentId?.regNo
+const name = a.studentId?.name
 
-const periods=stored[key]
-
-Object.keys(periods).forEach(p=>{
-
-const {attendance}=periods[p]
-
-Object.entries(attendance).forEach(([roll,status])=>{
-
-let stu=final.find(r=>r.roll===roll)
+let stu = final.find(s=>s.roll===roll)
 
 if(!stu){
-
 stu={
 roll,
-name:students[roll] || "Unknown",
+name,
 present:0,
 total:0
 }
-
 final.push(stu)
-
 }
 
 stu.total++
 
-if(status==="P") stu.present++
-
-})
+if(a.status==="Present"){
+stu.present++
+}
 
 })
 
 })
 
 final.forEach(s=>{
-
 s.absent=s.total-s.present
-
 s.percentage=s.total?
 ((s.present/s.total)*100).toFixed(1):0
-
 })
 
 setReport(final)
 setShowReport(true)
 
+}catch(err){
+console.error(err)
+showAlert("Error fetching report","danger")
+}
+
 }
 
 const exportExcel=()=>{
-
-const data=[
-{Department:department,Year:year},
-{},
-...report
-]
-
+const data=[{Department:department,Year:year},{},...report]
 const ws=XLSX.utils.json_to_sheet(data)
 const wb=XLSX.utils.book_new()
-
 XLSX.utils.book_append_sheet(wb,ws,"Attendance")
-
 XLSX.writeFile(wb,"Attendance_Report.xlsx")
-
 }
 
 const exportPDF=()=>{
-
 const doc=new jsPDF()
-
 doc.text(`Attendance Report`,20,20)
 doc.text(`Department : ${department}`,20,30)
 doc.text(`Year : ${year}`,120,30)
@@ -191,38 +170,25 @@ doc.text(`Year : ${year}`,120,30)
 let y=40
 
 report.forEach(r=>{
-
-doc.text(
-`${r.roll}   ${r.name}   ${r.present}/${r.total}   ${r.percentage}%`,
-20,
-y
-)
-
+doc.text(`${r.roll} ${r.name} ${r.present}/${r.total} ${r.percentage}%`,20,y)
 y+=10
-
 })
 
 doc.save("Attendance_Report.pdf")
-
 }
 
 const filtered=report.filter(r=>
-r.roll.toLowerCase().includes(search.toLowerCase())
+r.roll?.toLowerCase().includes(search.toLowerCase())
 )
 
 const defaulters=report.filter(r=>r.percentage<75)
 
 const classAvg=report.length?
-(
-report.reduce((a,b)=>a+Number(b.percentage),0)
-/
-report.length
-).toFixed(1):0
+(report.reduce((a,b)=>a+Number(b.percentage),0)/report.length).toFixed(1):0
 
 const displayData=showDefaulters?defaulters:filtered
 
 return(
-
 <section className="container py-3" style={{maxWidth:"1100px"}}>
 
 <h3 className="fw-bold text-primary mb-3">
@@ -265,15 +231,13 @@ onChange={e=>setYear(e.target.value)}>
 </div>
 
 <div className="col-md-3">
-<input type="date"
-className="form-control"
+<input type="date" className="form-control"
 value={fromDate}
 onChange={e=>handleSmartDate("from",e.target.value)}/>
 </div>
 
 <div className="col-md-3">
-<input type="date"
-className="form-control"
+<input type="date" className="form-control"
 value={toDate}
 onChange={e=>handleSmartDate("to",e.target.value)}/>
 </div>
@@ -286,7 +250,6 @@ View
 </div>
 
 </div>
-
 </div>
 
 {workingDays!==null &&
@@ -296,76 +259,14 @@ Working Days : {workingDays}
 }
 
 {showReport &&(
-
 <>
-
-{/* Class Info */}
 <div className="fw-bold text-primary mb-2">
-
 Department : {department} &nbsp;&nbsp;
 Year : {year}
-
-</div>
-
-<div className="row mb-3">
-
-<div className="col-md-4">
-<div className="card p-3 shadow">
-<h6>Total Students</h6>
-<h4>{report.length}</h4>
-</div>
-</div>
-
-<div className="col-md-4">
-<div className="card p-3 shadow">
-<h6>Class Average</h6>
-<h4>{classAvg}%</h4>
-</div>
-</div>
-
-<div className="col-md-4">
-<div className="card p-3 shadow">
-<h6>Defaulters</h6>
-<h4>{defaulters.length}</h4>
-</div>
-</div>
-
-</div>
-
-<div className="mb-3 d-flex gap-2">
-
-<input
-type="text"
-placeholder="Search roll number"
-className="form-control"
-value={search}
-onChange={e=>setSearch(e.target.value)}
-/>
-
-<button
-className="btn btn-warning"
-onClick={()=>setShowDefaulters(!showDefaulters)}>
-Defaulters
-</button>
-
-<button
-className="btn btn-primary"
-onClick={exportExcel}>
-Excel
-</button>
-
-<button
-className="btn btn-danger"
-onClick={exportPDF}>
-PDF
-</button>
-
 </div>
 
 <table className="table table-hover">
-
 <thead className="table-primary">
-
 <tr>
 <th>Roll</th>
 <th>Name</th>
@@ -374,11 +275,9 @@ PDF
 <th>Total</th>
 <th>%</th>
 </tr>
-
 </thead>
 
 <tbody>
-
 {displayData.map(r=>(
 <tr key={r.roll}>
 <td>{r.roll}</td>
@@ -386,30 +285,16 @@ PDF
 <td>{r.present}</td>
 <td>{r.absent}</td>
 <td>{r.total}</td>
-
-<td className={
-r.percentage>=75?
-"text-success fw-bold":
-"text-danger fw-bold"
-}>
-{r.percentage}%
-</td>
-
+<td>{r.percentage}%</td>
 </tr>
 ))}
-
 </tbody>
-
 </table>
-
 </>
-
 )}
 
 </section>
-
 )
-
 }
 
 export default Reports

@@ -9,6 +9,19 @@ router.post("/save", async (req, res) => {
   try {
     const { date, department, year, period, subject, attendance } = req.body;
 
+    // ✅ CHECK DUPLICATE
+    const existing = await Attendance.findOne({
+      date: new Date(date),
+      department,
+      year,
+      period,
+    });
+
+    if (existing) {
+      return res.status(400).json({
+        message: "Attendance already marked for this period",
+      });
+    }
     // Convert regNo -> studentId
     const mapped = await Promise.all(
       attendance.map(async (item) => {
@@ -42,14 +55,30 @@ router.get("/view", async (req, res) => {
   try {
     const { date, department, year, period } = req.query;
 
-    const records = await Attendance.find({
-      date,
+    const query = {
       department,
-      year,
-      period,
-    }).populate("attendance.studentId", "name regNo");
+      year: Number(year), // 🔥 FIX
+    };
+
+    // 🔥 DATE RANGE FIX (IMPORTANT)
+    if (date) {
+      const start = new Date(date);
+      start.setHours(0, 0, 0, 0);
+
+      const end = new Date(date);
+      end.setHours(23, 59, 59, 999);
+
+      query.date = { $gte: start, $lte: end };
+    }
+
+    if (period) {
+      query.period = Number(period);
+    }
+
+    const records = await Attendance.find(query);
 
     res.json(records);
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
