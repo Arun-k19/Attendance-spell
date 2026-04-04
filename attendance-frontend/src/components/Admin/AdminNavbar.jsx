@@ -11,14 +11,12 @@ export default function AdminNavbar({ now }) {
     >
       <div className="d-flex align-items-center gap-3">
 
-        {/* Mobile Sidebar Toggle */}
+        {/* mobile sidebar toggle */}
         <button
           className="btn btn-outline-light d-md-none"
           type="button"
           data-bs-toggle="offcanvas"
           data-bs-target="#mobileSidebar"
-          aria-controls="mobileSidebar"
-          aria-label="Open sidebar"
         >
           ☰
         </button>
