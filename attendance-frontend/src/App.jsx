@@ -1,7 +1,7 @@
 // src/App.jsx
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-
+import './App.css'
 import LoginPage from "./users/LoginPage";
 import AdminDashboard from "./users/AdminDashboard";
 import HodDashboard from "./users/hodDashboard";// ✅ fixed casing (file + component name should match exactly)

@@ -9,6 +9,7 @@ import AttendancePage from "../Pages/AttendancePage";
 import Reports from "../Pages/Reports";
 import { getDashboardCounts } from "../api/dashboardApi";
 
+
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [now, setNow] = useState(new Date());
@@ -111,15 +112,17 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="d-flex" style={{ minHeight: "100vh", background: "#f1f5f9" }}>
+    <div  style={{ minHeight: "100vh", background: "#f1f5f9" }}>
 
-      <AdminSidebar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        handleLogout={handleLogout}
-      />
+     <>
+  <AdminSidebar
+    activeTab={activeTab}
+    setActiveTab={setActiveTab}
+    handleLogout={handleLogout}
+  />
+</>
 
-      <div className="flex-grow-1">
+      <div  className="admin-main">
 
         <AdminNavbar now={now} />
 

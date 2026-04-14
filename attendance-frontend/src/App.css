@@ -1,0 +1,13 @@
+/* Desktop — sidebar 250px */
+@media (min-width: 768px) {
+  .admin-main {
+    margin-left: 250px;
+  }
+}
+
+/* Mobile — no margin */
+@media (max-width: 767px) {
+  .admin-main {
+    margin-left: 0;
+  }
+}
