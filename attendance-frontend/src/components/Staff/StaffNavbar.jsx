@@ -1,65 +1,123 @@
 import React from "react";
-import { BsList, BsCalendarDate, BsPersonBadge } from "react-icons/bs";
 
 export default function StaffNavbar({ now }) {
+
   const staffName =
     localStorage.getItem("staffName") || "Staff Member";
 
+  const days   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+
+  const dateNum   = now.getDate();
+  const dateMonth = months[now.getMonth()] + ' ' + now.getFullYear();
+  const dayName   = days[now.getDay()];
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+  const timeStr = `${h}:${m}:${s}`;
+
   return (
     <header
-      className="d-flex align-items-center justify-content-between px-3 py-2 shadow-sm"
+      className="d-flex align-items-center justify-content-between px-3 py-2"
       style={{
-        background: "linear-gradient(90deg, #1e3a8a 0%, #2563eb 100%)",
-        color: "white",
+        background: "linear-gradient(90deg,#1e3a8a,#2563eb)",
+        color: "white"
       }}
     >
-      {/* Left Section */}
+
+      {/* 🔥 LEFT */}
       <div className="d-flex align-items-center gap-3">
 
         {/* Sidebar Toggle */}
         <button
-          className="btn btn-outline-light d-md-none"
+          className="d-md-none"
           type="button"
           data-bs-toggle="offcanvas"
           data-bs-target="#mobileStaffSidebar"
-          aria-controls="mobileStaffSidebar"
-          aria-label="Open sidebar"
+          style={{
+            background: "rgba(255,255,255,0.15)",
+            border: "1px solid rgba(255,255,255,0.25)",
+            borderRadius: 8,
+            padding: "7px 10px",
+            color: "white"
+          }}
         >
-          <BsList size={20} />
+          ☰
         </button>
 
         {/* Staff Info */}
         <div>
-          <h5 className="mb-0 fw-semibold">Welcome, {staffName}</h5>
-          <small className="text-white-50">Staff Dashboard</small>
-        </div>
-      </div>
-
-      {/* Right Section */}
-      <div className="d-flex align-items-center gap-3">
-        <div className="d-flex align-items-center bg-white text-dark px-3 py-1 rounded shadow-sm">
-          <BsCalendarDate className="me-2 text-primary" size={16} />
-          <div className="small fw-semibold">
-            {now.toLocaleDateString()} <br />
-            <span className="text-muted small">
-              {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-            </span>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>
+            Welcome, Staff 👨‍🏫
+          </div>
+          <div style={{
+            fontSize: 11,
+            color: "rgba(255,255,255,0.6)"
+          }}>
+            Staff Dashboard
           </div>
         </div>
 
-        <div
-          className="bg-white text-primary p-2 rounded-circle shadow-sm"
-          style={{
-            width: 38,
-            height: 38,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <BsPersonBadge size={20} />
-        </div>
       </div>
+
+      {/* 🔥 RIGHT (DATE CARD SAME AS HOD) */}
+      <div
+        style={{
+          background: "rgba(255,255,255,0.12)",
+          border: "1px solid rgba(255,255,255,0.2)",
+          borderRadius: 12,
+          padding: "7px 14px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+
+        {/* Date */}
+        <div style={{ textAlign: "center" }}>
+          <div style={{
+            fontSize: 22,
+            fontWeight: 700,
+            lineHeight: 1
+          }}>
+            {dateNum}
+          </div>
+
+          <div style={{
+            fontSize: 10,
+            color: "rgba(255,255,255,0.7)",
+            letterSpacing: 1
+          }}>
+            {dateMonth}
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div style={{
+          width: 1,
+          height: 32,
+          background: "rgba(255,255,255,0.25)"
+        }} />
+
+        {/* Time */}
+        <div>
+          <div style={{
+            fontSize: 16,
+            fontWeight: 700
+          }}>
+            {timeStr}
+          </div>
+
+          <div style={{
+            fontSize: 10,
+            color: "rgba(255,255,255,0.6)"
+          }}>
+            {dayName}
+          </div>
+        </div>
+
+      </div>
+
     </header>
   );
 }

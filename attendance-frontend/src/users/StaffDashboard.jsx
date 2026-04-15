@@ -1,166 +1,171 @@
 import React, { useEffect, useState } from "react";
-import AdminNavbar from "../components/Admin/AdminNavbar";
 import StaffSidebar from "../components/Staff/StaffSidebar";
-import StaffNavbar from "../components/Staff/StaffNavbar"; // ✅ Use StaffSidebar here
+import StaffNavbar from "../components/Staff/StaffNavbar";
 import AttendancePage from "../Pages/AttendancePage";
 import Reports from "../Pages/Reports";
-import { getDashboardCounts } from "../api/dashboardApi"; // ✅ Fetch staff-specific data if available
 
 export default function StaffDashboard() {
-  // 🌟 State Management
   const [activeTab, setActiveTab] = useState("dashboard");
   const [now, setNow] = useState(new Date());
+
+  const [selectedYear, setSelectedYear] = useState("all");
+
   const [counts, setCounts] = useState({
-    todayAttendance: 0,
-    totalClassesTaken: 0,
-    deptStudents: 0,
+    totalStudents: 60,
+    totalClasses: 12,
+    attendancePercent: 75,
   });
 
-  // 🕒 Live Clock (updates every second)
-  useEffect(() => {
-    const intervalId = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(intervalId);
-  }, []);
+  // 🔥 Dummy Students (same pattern like HOD)
+  const students = [
+    { name: "Arun", year: "3" },
+    { name: "Kumar", year: "2" },
+    { name: "Deepak", year: "4" },
+    { name: "Rohit", year: "1" },
+    { name: "Vijay", year: "3" },
+  ];
 
-  // 📊 Fetch Staff Dashboard Data
+  // Clock
   useEffect(() => {
-    const fetchCounts = async () => {
-      try {
-        const res = await getDashboardCounts();
-        setCounts({
-          todayAttendance: res.data?.attendancePercent || 85,
-          totalClassesTaken: res.data?.totalClasses || 12,
-          deptStudents: res.data?.deptStudents || 60,
-        });
-      } catch (err) {
-        console.error("❌ Error fetching staff dashboard counts:", err);
-      }
-    };
-    fetchCounts();
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
   }, []);
-
-  // 🚪 Logout Function
-  const handleLogout = () => {
-    if (window.confirm("Are you sure you want to logout?")) {
-      localStorage.removeItem("staffAuth");
-      window.location.href = "/";
-    }
-  };
 
   return (
-    <div
-      className="d-flex"
-      style={{ minHeight: "100vh", backgroundColor: "#f1f5f9" }}
-    >
-      {/* 🧭 Sidebar */}
+    <div style={{ minHeight: "100vh", background: "#f1f5f9" }}>
+
+      {/* Sidebar */}
       <StaffSidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        handleLogout={handleLogout}
+        handleLogout={() => (window.location.href = "/")}
       />
 
-      {/* 🧱 Main Section */}
-      <div className="flex-grow-1">
-        {/* Top Navbar */}
-        <AdminNavbar now={now} />
+      {/* 🔥 MAIN CONTENT FIX */}
+      <div className="staff-main">
 
-        <main className="p-4">
-          {/* 🏠 Dashboard Section */}
+        <StaffNavbar now={now} />
+
+        <main className="p-4 container-fluid">
+
           {activeTab === "dashboard" && (
             <section>
-              <h3 className="mb-3 fw-semibold">Staff Dashboard</h3>
-              <p className="text-muted mb-4">
-                Welcome! Here you can manage attendance and view reports for your department.
-              </p>
 
-              {/* Summary Cards */}
-              <div className="row g-3 mb-4">
-                <div className="col-12 col-sm-6 col-lg-4">
-                  <div className="card shadow-sm border-0 h-100">
-                    <div className="card-body">
-                      <small className="text-muted">Department Students</small>
-                      <div className="h3 fw-bold mt-2">
-                        {counts.deptStudents}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              <h3 className="fw-bold mb-3">Staff Dashboard</h3>
 
-                <div className="col-12 col-sm-6 col-lg-4">
-                  <div className="card shadow-sm border-0 h-100">
-                    <div className="card-body">
-                      <small className="text-muted">Total Classes Taken</small>
-                      <div className="h3 fw-bold mt-2">
-                        {counts.totalClassesTaken}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-12 col-sm-6 col-lg-4">
-                  <div className="card shadow-sm border-0 h-100">
-                    <div className="card-body">
-                      <small className="text-muted">Today's Attendance</small>
-                      <div className="h3 fw-bold mt-2">
-                        {counts.todayAttendance}%
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              {/* Banner */}
+              <div
+                className="shadow-sm p-4 mb-4"
+                style={{
+                  borderRadius: "16px",
+                  background: "linear-gradient(90deg,#2563eb,#1e40af)",
+                  color: "white",
+                }}
+              >
+                <h5 className="fw-bold">Welcome to Staff Dashboard 👨‍🏫</h5>
+                <p className="mb-0">
+                  Manage attendance and view reports efficiently.
+                </p>
               </div>
 
-              {/* Quick Action Cards */}
-              <div className="row g-3">
-                <div className="col-12 col-md-6 col-lg-4">
-                  <div
-                    className="card shadow-sm border-0 text-center p-3 h-100"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => setActiveTab("attendance")}
-                  >
-                    <div className="card-body">
-                      <h5 className="fw-semibold">📘 Attendance</h5>
-                      <p className="text-muted mb-0">
-                        Mark or view student attendance easily.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+              {/* 🔥 CARDS */}
+              <div className="row g-4 mb-4">
 
-                <div className="col-12 col-md-6 col-lg-4">
-                  <div
-                    className="card shadow-sm border-0 text-center p-3 h-100"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => setActiveTab("reports")}
-                  >
-                    <div className="card-body">
-                      <h5 className="fw-semibold">📊 Reports</h5>
-                      <p className="text-muted mb-0">
-                        Generate and export attendance reports effortlessly.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <DashboardCard title="Students" value={counts.totalStudents} />
+                <DashboardCard title="Classes Taken" value={counts.totalClasses} />
+                <DashboardCard title="Attendance" value={`${counts.attendancePercent}%`} />
+
               </div>
+
+              {/* 🔥 YEAR FILTER */}
+              <div className="mb-3">
+                {["all", "1", "2", "3", "4"].map((y) => (
+                  <button
+                    key={y}
+                    className={`btn me-2 ${
+                      selectedYear === y ? "btn-primary" : "btn-light"
+                    }`}
+                    style={{ borderRadius: "20px" }}
+                    onClick={() => setSelectedYear(y)}
+                  >
+                    {y === "all" ? "All" : `${y} Year`}
+                  </button>
+                ))}
+              </div>
+
+              {/* 🔥 STUDENTS PREVIEW */}
+              <div className="row">
+
+                <div className="col-md-6">
+                  <div className="card p-3 shadow-sm border-0"
+                    style={{ borderRadius: "16px" }}>
+
+                    <h6 className="fw-bold mb-3">Students</h6>
+
+                    <div style={{ maxHeight: "250px", overflowY: "auto" }}>
+                      <ul className="list-group">
+
+                        {students
+                          .filter(s => selectedYear === "all" || s.year === selectedYear)
+                          .map((s, i) => (
+                            <li key={i}
+                              className="list-group-item d-flex justify-content-between">
+                              {s.name}
+                              <span className="badge bg-primary">Y{s.year}</span>
+                            </li>
+                          ))}
+
+                      </ul>
+                    </div>
+
+                  </div>
+                </div>
+
+                {/* 🔥 QUICK ACTIONS */}
+                <div className="col-md-6">
+                  <div className="card p-3 shadow-sm border-0"
+                    style={{ borderRadius: "16px" }}>
+
+                    <h6 className="fw-bold mb-3">Quick Actions</h6>
+
+                    <button
+                      className="btn btn-primary w-100 mb-2"
+                      onClick={() => setActiveTab("attendance")}
+                    >
+                      📘 Take Attendance
+                    </button>
+
+                    <button
+                      className="btn btn-success w-100"
+                      onClick={() => setActiveTab("reports")}
+                    >
+                      📊 View Reports
+                    </button>
+
+                  </div>
+                </div>
+
+              </div>
+
             </section>
           )}
 
-          {/* 📝 Attendance Section */}
-          {activeTab === "attendance" && (
-            <section>
-              <h4 className="mb-3 fw-semibold">📘 Attendance Management</h4>
-              <AttendancePage />
-            </section>
-          )}
+          {activeTab === "attendance" && <AttendancePage />}
+          {activeTab === "reports" && <Reports />}
 
-          {/* 📈 Reports Section */}
-          {activeTab === "reports" && (
-            <section>
-              <h4 className="mb-3 fw-semibold">📊 Reports Overview</h4>
-              <Reports />
-            </section>
-          )}
         </main>
       </div>
     </div>
   );
 }
+
+// 🔥 CARD COMPONENT
+const DashboardCard = ({ title, value }) => (
+  <div className="col-md-4">
+    <div className="card text-center border-0 shadow-sm p-4"
+      style={{ borderRadius: "16px" }}>
+      <h6 className="text-muted">{title}</h6>
+      <h2 className="fw-bold text-primary">{value}</h2>
+    </div>
+  </div>
+);

@@ -1,41 +1,86 @@
 import React from "react";
 
+const menu = [
+  { key: "dashboard", label: "Dashboard", icon: "📊" },
+  { key: "attendance", label: "Attendance", icon: "📅" },
+  { key: "reports", label: "Reports", icon: "📄" },
+];
+
 export default function StaffSidebar({ activeTab, setActiveTab, handleLogout }) {
-  const offcanvasId = "mobileStaffSidebar";
 
-  // ✅ Staff menu (limited access)
-  const menu = [
-    { key: "dashboard", label: "Dashboard" },
-    { key: "attendance", label: "Attendance" },
-    { key: "reports", label: "Reports" },
-  ];
+  const renderLink = (m, dismiss = false) => (
+    <button
+      type="button"
+      onClick={() => setActiveTab(m.key)}
+      {...(dismiss ? { "data-bs-dismiss": "offcanvas" } : {})}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        width: "100%",
+        padding: "12px 14px",
+        marginBottom: 6,
+        border: "none",
+        borderRadius: 10,
+        cursor: "pointer",
+        fontSize: 14,
+        fontWeight: activeTab === m.key ? 600 : 500,
+        transition: "all 0.25s ease",
+        background: activeTab === m.key
+          ? "linear-gradient(90deg,#2563eb,#3b82f6)"
+          : "transparent",
+        color: activeTab === m.key ? "#fff" : "#374151",
+        boxShadow: activeTab === m.key
+          ? "0 4px 12px rgba(37,99,235,0.25)"
+          : "none",
+      }}
+      onMouseEnter={(e) => {
+        if (activeTab !== m.key) {
+          e.currentTarget.style.background = "#eff6ff";
+          e.currentTarget.style.color = "#2563eb";
+          e.currentTarget.style.transform = "translateX(4px)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (activeTab !== m.key) {
+          e.currentTarget.style.background = "transparent";
+          e.currentTarget.style.color = "#374151";
+          e.currentTarget.style.transform = "translateX(0)";
+        }
+      }}
+    >
+      <span style={{ fontSize: 18 }}>{m.icon}</span>
+      {m.label}
 
-  // helper to render each link
-  const renderLink = (m) => (
-<button
-  type="button"
-  onClick={() => setActiveTab(m.key)}
-  className={`nav-link text-start w-100 border-0 bg-transparent ${
-    activeTab === m.key ? "active" : ""
-  }`}
-  data-bs-dismiss="offcanvas"
->
-  {m.label}
-</button>
+      {activeTab === m.key && (
+        <span style={{
+          marginLeft: "auto",
+          fontSize: 10,
+          opacity: 0.7
+        }}>
+          ●
+        </span>
+      )}
+    </button>
   );
 
   return (
     <>
-      {/* 🖥️ Desktop Sidebar */}
+      {/* 🔥 Desktop Sidebar */}
       <aside
         className="bg-white border-end d-none d-md-flex flex-column"
         style={{
-          width: 260,
+          width: 250,
           minHeight: "100vh",
-          boxShadow: "0 4px 18px rgba(37,99,235,0.06)",
+          position: "fixed",
+          top: 0,
+          left: 0,
+          zIndex: 1000,
+          boxShadow: "0 6px 20px rgba(0,0,0,0.06)",
         }}
       >
-        {/* Header Section */}
+
+        {/* Header */}
         <div
           className="p-3 d-flex align-items-center gap-3 border-bottom"
           style={{
@@ -47,84 +92,98 @@ export default function StaffSidebar({ activeTab, setActiveTab, handleLogout }) 
             src="/chendhuran-logo.png"
             alt="logo"
             style={{
-              width: 48,
-              height: 48,
+              width: 50,
+              height: 50,
               objectFit: "cover",
-              borderRadius: 8,
-              border: "2px solid rgba(255,255,255,0.12)",
+              borderRadius: 10,
+              border: "2px solid rgba(255,255,255,0.25)",
             }}
           />
           <div>
-            <div className="fw-bold">College Attendance</div>
+            <div className="fw-bold" style={{ fontSize: 14 }}>
+              College Attendance
+            </div>
             <small className="text-white-50">Staff Panel</small>
           </div>
         </div>
 
-        {/* Menu Items */}
+        {/* Menu */}
         <nav className="flex-grow-1 p-3">
-          <ul className="nav nav-pills flex-column">
-            {menu.map((m) => (
-              <li className="nav-item mb-1" key={m.key}>
-                {renderLink(m)}
-              </li>
-            ))}
-          </ul>
+          {menu.map((m) => (
+            <div key={m.key}>{renderLink(m)}</div>
+          ))}
         </nav>
 
-        {/* Logout Button */}
+        {/* 🔥 FIXED LOGOUT */}
         <div className="p-3 border-top">
-          <button className="btn btn-danger w-100" onClick={handleLogout}>
-            Logout
+          <button
+            className="btn btn-danger w-100"
+            onClick={handleLogout}
+          >
+            🚪 Logout
           </button>
         </div>
+
       </aside>
 
-      {/* 📱 Mobile Sidebar (Offcanvas) */}
-      <div className="d-md-none">
+      {/* 🔥 Mobile Sidebar */}
+      <div
+        className="offcanvas offcanvas-start"
+        tabIndex="-1"
+        id="mobileStaffSidebar"
+        style={{ width: 260 }}
+      >
         <div
-          className="offcanvas offcanvas-start"
-          tabIndex="-1"
-          id={offcanvasId}
-          aria-labelledby={`${offcanvasId}Label`}
+          className="offcanvas-header"
+          style={{
+            background: "linear-gradient(90deg,#1e3a8a,#2563eb)",
+            color: "#fff",
+          }}
         >
-          <div
-            className="offcanvas-header"
-            style={{
-              background: "linear-gradient(90deg,#1e3a8a,#2563eb)",
-              color: "#fff",
-            }}
-          >
-            <h5
-              className="offcanvas-title text-white"
-              id={`${offcanvasId}Label`}
-            >
-              Staff Panel
-            </h5>
-            <button
-              type="button"
-              className="btn-close btn-close-white text-reset"
-              data-bs-dismiss="offcanvas"
-              aria-label="Close"
-            ></button>
-          </div>
-
-          <div className="offcanvas-body p-0">
-            <nav className="p-3">
-              <ul className="nav nav-pills flex-column">
-                {menu.map((m) => (
-                  <li className="nav-item mb-1" key={m.key}>
-                    {renderLink(m)}
-                  </li>
-                ))}
-              </ul>
-            </nav>
-
-            <div className="p-3 border-top">
-              <button className="btn btn-danger w-100" onClick={handleLogout}>
-                Logout
-              </button>
+          <div className="d-flex align-items-center gap-2">
+            <img
+              src="/chendhuran-logo.png"
+              alt="logo"
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 8,
+                objectFit: "cover",
+              }}
+            />
+            <div>
+              <div className="fw-bold text-white" style={{ fontSize: 14 }}>
+                College Attendance
+              </div>
+              <small className="text-white-50">Staff Panel</small>
             </div>
           </div>
+
+          <button
+            type="button"
+            className="btn-close btn-close-white"
+            data-bs-dismiss="offcanvas"
+          ></button>
+        </div>
+
+        <div className="offcanvas-body p-0 d-flex flex-column">
+          <nav className="flex-grow-1 p-3">
+            {menu.map((m) => (
+              <div key={m.key}>{renderLink(m, true)}</div>
+            ))}
+          </nav>
+
+          {/* 🔥 MOBILE LOGOUT FIX */}
+          <div className="p-3 border-top">
+            <button
+              className="btn btn-danger w-100"
+              onClick={handleLogout}
+              data-bs-dismiss="offcanvas"
+            >
+              🚪 Logout
+            </button>
+          </div>
+
         </div>
       </div>
     </>

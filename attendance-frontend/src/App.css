@@ -11,3 +11,25 @@
     margin-left: 0;
   }
 }
+
+
+.hod-main {
+  margin-left: 250px;
+}
+
+@media (max-width: 768px) {
+  .hod-main {
+    margin-left: 0;
+  }
+}
+
+
+.staff-main {
+  margin-left: 250px;
+}
+
+@media (max-width: 768px) {
+  .staff-main {
+    margin-left: 0;
+  }
+}
