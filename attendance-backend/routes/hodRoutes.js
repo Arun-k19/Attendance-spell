@@ -112,7 +112,7 @@ router.get("/dashboard-counts/:department", async (req, res) => {
     });
 
     const totalStaff = await Staff.countDocuments({
-      dept: department,
+      department: department,
     });
 
     console.log("Department:", department);

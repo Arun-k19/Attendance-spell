@@ -76,7 +76,17 @@ router.post("/login", async (req, res) => {
     }
 
     console.log(`✅ Login successful for ${username} (${user.role})`);
-    res.json({ msg: "Login Successful", user: { username: user.username, role: user.role } });
+
+    let department = "";
+
+    if (user.role.toLowerCase() === "hod") {
+    const parts = user.username.split("_"); // example: ajay_ece
+
+    if (parts.length > 1) {
+      department = parts[1].toUpperCase(); // ECE
+    }
+  } 
+  res.json({ msg: "Login Successful", user: { username: user.username, role: user.role } });
   } catch (err) {
     console.error("❌ Login Error:", err);
     res.status(500).json({ msg: "DB Error" });

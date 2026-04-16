@@ -22,3 +22,6 @@ export const getHODDashboardCounts = async (department) => {
     throw err;
   }
 };
+
+export const getDepartmentDetails = (dept) =>
+  axios.get(`${BASE_URL}/dashboard/department-details/${dept}`);

@@ -94,4 +94,51 @@ router.get("/hod-counts/:department", async (req, res) => {
   }
 });
 
+router.get("/department-details/:dept", async (req, res) => {
+  try {
+    const department = req.params.dept.toUpperCase();
+
+    // HOD
+    const hod = await Hod.findOne({ department });
+
+    // Students
+    const students = await Student.find({ dept: department });
+
+    // Staff
+    const staff = await Staff.find({ department });
+
+    // Attendance %
+    const attendanceRecords = await Attendance.find({ department });
+
+    let present = 0;
+    let total = 0;
+
+    attendanceRecords.forEach((rec) => {
+      rec.attendance.forEach((a) => {
+        total++;
+        if (a.status === "Present") present++;
+      });
+    });
+
+    const attendancePercent =
+      total > 0 ? Math.round((present / total) * 100) : 0;
+
+    res.json({
+      hod: hod?.name || "Not Assigned",
+      students: students.map((s) => ({
+        name: s.name,
+        year: s.year,
+      })),
+      staff: staff.map((s) => ({
+        name: s.name,
+      })),
+      attendancePercent,
+    });
+
+  } catch (err) {
+    console.error("❌ Dept Details Error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
 export default router;

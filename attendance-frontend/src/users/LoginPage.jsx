@@ -28,6 +28,7 @@ function LoginPage() {
 
       if (res.data.msg === "Login Successful") {
         const userRole = res.data.user.role?.toLowerCase(); // ✅ case-insensitive check
+        localStorage.setItem("user", JSON.stringify(res.data.user));
 
         setTimeout(() => {
           if (userRole === "admin") navigate("/dashboard-admin");

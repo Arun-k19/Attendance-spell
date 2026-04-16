@@ -6,13 +6,14 @@ import ManageStaffs from "../Pages/ManageStaffs";
 import ManageHods from "../Pages/ManageHods";
 import AttendancePage from "../Pages/AttendancePage";
 import Reports from "../Pages/Reports";
-import { getDashboardCounts } from "../api/dashboardApi";
+import { getDashboardCounts, getDepartmentDetails } from "../api/dashboardApi";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [now, setNow] = useState(new Date());
   const [selectedDept, setSelectedDept] = useState(null);
   const [selectedYear, setSelectedYear] = useState("all");
+  const [deptData, setDeptData] = useState(null);
 
   const [counts, setCounts] = useState({
     totalStudents: 0,
@@ -23,78 +24,33 @@ export default function AdminDashboard() {
 
   const [deptStats, setDeptStats] = useState([]);
 
-  const deptDetails = {
-    CSE: {
-      hod: "Dr. Rajesh",
-      attendance: 78,
-      students: [
-        { name: "Arun", year: "3" },
-        { name: "Kumar", year: "2" },
-        { name: "Deepak", year: "4" },
-        { name: "Rohit", year: "1" },
-      ],
-      staff: [{ name: "Prof. Anand" }, { name: "Prof. Meena" }],
-    },
-    ECE: {
-      hod: "Dr. Kumar",
-      attendance: 65,
-      students: [
-        { name: "Ravi", year: "3" },
-        { name: "Ajay", year: "2" },
-      ],
-      staff: [{ name: "Prof. Suresh" }],
-    },
-    MECH: {
-      hod: "Dr. Vignesh",
-      attendance: 55,
-      students: [
-        { name: "Vijay", year: "1" },
-        { name: "Rahul", year: "3" },
-      ],
-      staff: [{ name: "Prof. Mani" }],
-    },
-    CIVIL: {
-      hod: "Dr. Siva",
-      attendance: 60,
-      students: [{ name: "Siva", year: "4" }],
-      staff: [{ name: "Prof. Bala" }],
-    },
-  };
-
+  // Clock
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
 
+  // Dashboard counts
   useEffect(() => {
     const fetchCounts = async () => {
       try {
         const res = await getDashboardCounts();
         setCounts(res.data);
       } catch {
-        setCounts({
-          totalStudents: 120,
-          totalStaff: 35,
-          totalHods: 5,
-          attendancePercent: 68,
-        });
+        console.log("Fallback counts");
       }
     };
     fetchCounts();
   }, []);
 
+  // Departments
   useEffect(() => {
-    const map = {};
-    Object.keys(deptDetails).forEach((d) => {
-      map[d] = deptDetails[d].students.length;
-    });
-
-    setDeptStats(
-      Object.keys(map).map((d) => ({
-        dept: d,
-        count: map[d],
-      }))
-    );
+    setDeptStats([
+      { dept: "CSE" },
+      { dept: "ECE" },
+      { dept: "MECH" },
+      { dept: "CIVIL" },
+    ]);
   }, []);
 
   return (
@@ -136,10 +92,11 @@ export default function AdminDashboard() {
                 <DashboardCard title="Attendance" value={counts.attendancePercent + "%"} />
               </div>
 
-              {/* Dept Cards */}
+              {/* Departments */}
               {!selectedDept && (
                 <div className="mt-5">
                   <h5 className="fw-bold mb-3">Departments</h5>
+
                   <div className="row g-3">
                     {deptStats.map((d, i) => (
                       <div key={i} className="col-md-3">
@@ -148,9 +105,19 @@ export default function AdminDashboard() {
                           style={{
                             borderRadius: "16px",
                             cursor: "pointer",
-                            transition: "0.3s",
+                            transition: "0.3s"
                           }}
-                          onClick={() => setSelectedDept(d.dept)}
+                          onClick={async () => {
+                            setSelectedDept(d.dept);
+
+                            try {
+                              const res = await getDepartmentDetails(d.dept);
+                              setDeptData(res.data);
+                            } catch (err) {
+                              console.error(err);
+                              alert("Failed to load department data");
+                            }
+                          }}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.transform = "scale(1.05)";
                             e.currentTarget.style.background = "#eff6ff";
@@ -161,7 +128,6 @@ export default function AdminDashboard() {
                           }}
                         >
                           <h6>{d.dept}</h6>
-                          <h2 className="fw-bold text-primary">{d.count}</h2>
                         </div>
                       </div>
                     ))}
@@ -169,7 +135,7 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {/* Dept Details */}
+              {/* Department Details */}
               {selectedDept && (
                 <div className="mt-5">
 
@@ -180,6 +146,7 @@ export default function AdminDashboard() {
                       style={{ borderRadius: "20px" }}
                       onClick={() => {
                         setSelectedDept(null);
+                        setDeptData(null);
                         setSelectedYear("all");
                       }}
                     >
@@ -189,9 +156,9 @@ export default function AdminDashboard() {
 
                   {/* Info Cards */}
                   <div className="row g-3 mb-4">
-                    <InfoCard title="HOD" value={deptDetails[selectedDept].hod} />
-                    <InfoCard title="Attendance" value={deptDetails[selectedDept].attendance + "%"} />
-                    <InfoCard title="Students" value={deptDetails[selectedDept].students.length} />
+                    <InfoCard title="HOD" value={deptData?.hod || "-"} />
+                    <InfoCard title="Attendance" value={(deptData?.attendancePercent || 0) + "%"} />
+                    <InfoCard title="Students" value={deptData?.students?.length || 0} />
                   </div>
 
                   {/* Year Filter */}
@@ -219,12 +186,12 @@ export default function AdminDashboard() {
 
                         <div style={{ maxHeight: "250px", overflowY: "auto" }}>
                           <ul className="list-group">
-                            {deptDetails[selectedDept].students
-                              .filter(s => selectedYear === "all" || s.year === selectedYear)
-                              .map((s, i) => (
+                            {deptData?.students
+                              ?.filter(s => selectedYear === "all" || s.year === selectedYear)
+                              ?.map((s, i) => (
                                 <li
                                   key={i}
-                                  className="list-group-item d-flex justify-content-between"
+                                  className="list-group-item d-flex justify-content-between align-items-center"
                                   style={{ borderRadius: "8px", marginBottom: "6px" }}
                                 >
                                   {s.name}
@@ -240,13 +207,19 @@ export default function AdminDashboard() {
                     <div className="col-md-6">
                       <div className="card p-3 shadow-sm border-0" style={{ borderRadius: "16px" }}>
                         <h6 className="fw-bold mb-3">Staff</h6>
+
                         <ul className="list-group">
-                          {deptDetails[selectedDept].staff.map((s, i) => (
-                            <li key={i} className="list-group-item">
+                          {deptData?.staff?.map((s, i) => (
+                            <li
+                              key={i}
+                              className="list-group-item"
+                              style={{ borderRadius: "8px", marginBottom: "6px" }}
+                            >
                               {s.name}
                             </li>
                           ))}
                         </ul>
+
                       </div>
                     </div>
 
@@ -269,7 +242,7 @@ export default function AdminDashboard() {
   );
 }
 
-// 🔥 Cards
+// Cards
 const DashboardCard = ({ title, value }) => (
   <div className="col-md-3">
     <div
@@ -290,7 +263,7 @@ const InfoCard = ({ title, value }) => (
       className="card border-0 shadow-sm text-center p-4"
       style={{
         borderRadius: "16px",
-        background: "linear-gradient(135deg,#f8fafc,#e0f2fe)",
+        background: "linear-gradient(135deg,#f8fafc,#e0f2fe)"
       }}
     >
       <h6 className="text-muted">{title}</h6>
