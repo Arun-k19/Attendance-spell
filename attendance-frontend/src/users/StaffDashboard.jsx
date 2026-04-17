@@ -12,38 +12,48 @@ export default function StaffDashboard() {
   const [selectedYear, setSelectedYear] = useState("all");
 
   const [counts, setCounts] = useState({
-    totalStudents: 60,
+    totalStudents: 0,
     totalClasses: 12,
-    attendancePercent: 75,
+    attendancePercent: 0,
   });
+
   const [dept, setDept] = useState("");
   const [data, setData] = useState(null);
 
-  // 🔥 Dummy Students (same pattern like HOD)
-  const students = [
-    { name: "Arun", year: "3" },
-    { name: "Kumar", year: "2" },
-    { name: "Deepak", year: "4" },
-    { name: "Rohit", year: "1" },
-    { name: "Vijay", year: "3" },
-  ];
-
-  // Clock
+  // 🕒 Clock
   useEffect(() => {
-    const staff = JSON.parse(localStorage.getItem("staffData"));
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
-    if (staff && staff.department) {
-      setDept(staff.department);
-      console.log("STAFF DEPT:", staff.department);
+  // 🔥 GET USER FROM LOCAL STORAGE (FIXED)
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+
+    console.log("STAFF USER:", user);
+
+    if (user && user.department) {
+      setDept(user.department);
+    } else {
+      console.error("❌ No department found in staff user");
     }
   }, []);
 
+  // 🔥 FETCH DATA FROM BACKEND
   useEffect(() => {
     if (dept) {
       getStaffDashboardData(dept)
         .then((res) => {
           console.log("STAFF API:", res.data);
+
           setData(res.data);
+
+          // ✅ IMPORTANT FIX
+          setCounts({
+            totalStudents: res.data.totalStudents || 0,
+            totalClasses: 12,
+            attendancePercent: res.data.attendancePercent || 0,
+          });
         })
         .catch((err) => {
           console.error("Staff dashboard error:", err);
@@ -61,7 +71,6 @@ export default function StaffDashboard() {
         handleLogout={() => (window.location.href = "/")}
       />
 
-      {/* 🔥 MAIN CONTENT FIX */}
       <div className="staff-main">
 
         <StaffNavbar now={now} />
@@ -91,9 +100,20 @@ export default function StaffDashboard() {
               {/* 🔥 CARDS */}
               <div className="row g-4 mb-4">
 
-                <DashboardCard title="Students" value={data?.totalStudents} />
-                <DashboardCard title="Classes Taken" value={counts.totalClasses} />
-                <DashboardCard title="Attendance" value={`${data?.attendancePercent}%`} />
+                <DashboardCard
+                  title="Students"
+                  value={counts.totalStudents}
+                />
+
+                <DashboardCard
+                  title="Classes Taken"
+                  value={counts.totalClasses}
+                />
+
+                <DashboardCard
+                  title="Attendance"
+                  value={`${counts.attendancePercent}%`}
+                />
 
               </div>
 
@@ -117,21 +137,37 @@ export default function StaffDashboard() {
               <div className="row">
 
                 <div className="col-md-6">
-                  <div className="card p-3 shadow-sm border-0"
-                    style={{ borderRadius: "16px" }}>
+                  <div
+                    className="card p-3 shadow-sm border-0"
+                    style={{ borderRadius: "16px" }}
+                  >
 
                     <h6 className="fw-bold mb-3">Students</h6>
 
                     <div style={{ maxHeight: "250px", overflowY: "auto" }}>
                       <ul className="list-group">
 
+                        {data?.students?.length === 0 && (
+                          <li className="list-group-item text-center text-muted">
+                            No students found
+                          </li>
+                        )}
+
                         {data?.students
-                          ?.filter(s => selectedYear === "all" || s.year === selectedYear)
+                          ?.filter(
+                            (s) =>
+                              selectedYear === "all" ||
+                              s.year === selectedYear
+                          )
                           ?.map((s, i) => (
-                            <li key={i}
-                              className="list-group-item d-flex justify-content-between">
+                            <li
+                              key={i}
+                              className="list-group-item d-flex justify-content-between"
+                            >
                               {s.name}
-                              <span className="badge bg-primary">Y{s.year}</span>
+                              <span className="badge bg-primary">
+                                Y{s.year}
+                              </span>
                             </li>
                           ))}
 
@@ -143,8 +179,10 @@ export default function StaffDashboard() {
 
                 {/* 🔥 QUICK ACTIONS */}
                 <div className="col-md-6">
-                  <div className="card p-3 shadow-sm border-0"
-                    style={{ borderRadius: "16px" }}>
+                  <div
+                    className="card p-3 shadow-sm border-0"
+                    style={{ borderRadius: "16px" }}
+                  >
 
                     <h6 className="fw-bold mb-3">Quick Actions</h6>
 
@@ -182,8 +220,10 @@ export default function StaffDashboard() {
 // 🔥 CARD COMPONENT
 const DashboardCard = ({ title, value }) => (
   <div className="col-md-4">
-    <div className="card text-center border-0 shadow-sm p-4"
-      style={{ borderRadius: "16px" }}>
+    <div
+      className="card text-center border-0 shadow-sm p-4"
+      style={{ borderRadius: "16px" }}
+    >
       <h6 className="text-muted">{title}</h6>
       <h2 className="fw-bold text-primary">{value}</h2>
     </div>
