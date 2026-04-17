@@ -3,6 +3,7 @@ import StaffSidebar from "../components/Staff/StaffSidebar";
 import StaffNavbar from "../components/Staff/StaffNavbar";
 import AttendancePage from "../Pages/AttendancePage";
 import Reports from "../Pages/Reports";
+import { getStaffDashboardData } from "../api/dashboardApi";
 
 export default function StaffDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -15,6 +16,8 @@ export default function StaffDashboard() {
     totalClasses: 12,
     attendancePercent: 75,
   });
+  const [dept, setDept] = useState("");
+  const [data, setData] = useState(null);
 
   // 🔥 Dummy Students (same pattern like HOD)
   const students = [
@@ -27,9 +30,26 @@ export default function StaffDashboard() {
 
   // Clock
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
+    const staff = JSON.parse(localStorage.getItem("staffData"));
+
+    if (staff && staff.department) {
+      setDept(staff.department);
+      console.log("STAFF DEPT:", staff.department);
+    }
   }, []);
+
+  useEffect(() => {
+    if (dept) {
+      getStaffDashboardData(dept)
+        .then((res) => {
+          console.log("STAFF API:", res.data);
+          setData(res.data);
+        })
+        .catch((err) => {
+          console.error("Staff dashboard error:", err);
+        });
+    }
+  }, [dept]);
 
   return (
     <div style={{ minHeight: "100vh", background: "#f1f5f9" }}>
@@ -71,9 +91,9 @@ export default function StaffDashboard() {
               {/* 🔥 CARDS */}
               <div className="row g-4 mb-4">
 
-                <DashboardCard title="Students" value={counts.totalStudents} />
+                <DashboardCard title="Students" value={data?.totalStudents} />
                 <DashboardCard title="Classes Taken" value={counts.totalClasses} />
-                <DashboardCard title="Attendance" value={`${counts.attendancePercent}%`} />
+                <DashboardCard title="Attendance" value={`${data?.attendancePercent}%`} />
 
               </div>
 
@@ -105,9 +125,9 @@ export default function StaffDashboard() {
                     <div style={{ maxHeight: "250px", overflowY: "auto" }}>
                       <ul className="list-group">
 
-                        {students
-                          .filter(s => selectedYear === "all" || s.year === selectedYear)
-                          .map((s, i) => (
+                        {data?.students
+                          ?.filter(s => selectedYear === "all" || s.year === selectedYear)
+                          ?.map((s, i) => (
                             <li key={i}
                               className="list-group-item d-flex justify-content-between">
                               {s.name}

@@ -141,4 +141,54 @@ router.get("/department-details/:dept", async (req, res) => {
   }
 });
 
+// =========================
+// STAFF DASHBOARD DATA
+// =========================
+router.get("/staff-details/:department", async (req, res) => {
+  try {
+    const department = req.params.department.toUpperCase();
+
+    const students = await Student.find({ dept: department })
+      .select("name year");
+
+    const staff = await Staff.find({ department })
+      .select("name");
+
+    const totalStudents = students.length;
+
+    // Attendance %
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const attendanceToday = await Attendance.find({
+      department,
+      date: { $gte: today }
+    });
+
+    let present = 0;
+    let totalMarked = 0;
+
+    attendanceToday.forEach((record) => {
+      record.attendance.forEach((a) => {
+        totalMarked++;
+        if (a.status === "Present") present++;
+      });
+    });
+
+    const attendancePercent =
+      totalMarked > 0 ? Math.round((present / totalMarked) * 100) : 0;
+
+    res.json({
+      students,
+      staff,
+      attendancePercent,
+      totalStudents
+    });
+
+  } catch (err) {
+    console.error("❌ Staff Dashboard Error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
 export default router;

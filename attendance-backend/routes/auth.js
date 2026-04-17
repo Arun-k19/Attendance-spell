@@ -4,26 +4,25 @@ import mongoose from "mongoose";
 
 const router = express.Router();
 
-// ✅ Define Schema (with lowercase index for consistency)
+// ✅ Schema (🔥 department added)
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true },
   password: { type: String, required: true },
   role: { type: String, required: true },
+  department: { type: String } // ✅ NEW FIELD
 });
 
-// ✅ Prevent model overwrite error during hot reload
 const User = mongoose.models.User || mongoose.model("User", userSchema);
 
-// ✅ Register Route
+// ================= REGISTER =================
 router.post("/register", async (req, res) => {
   try {
-    const { username, password, role } = req.body;
+    const { username, password, role, department } = req.body;
 
     if (!username || !password || !role) {
       return res.status(400).json({ msg: "All fields are required" });
     }
 
-    // 🔍 Case-insensitive check for existing user
     const existingUser = await User.findOne({
       username: { $regex: new RegExp(`^${username}$`, "i") },
       role: { $regex: new RegExp(`^${role}$`, "i") },
@@ -40,87 +39,84 @@ router.post("/register", async (req, res) => {
       username: username.trim(),
       password: hashedPassword,
       role: role.trim(),
+      department: department ? department.toUpperCase() : "" // ✅ SAVE
     });
 
     await newUser.save();
-    console.log(`✅ Registered new user: ${username} (${role})`);
 
-    res.json({ msg: "✅ User registered successfully!" });
+    res.json({ msg: "User registered successfully" });
+
   } catch (err) {
     console.error("❌ Register Error:", err);
     res.status(500).json({ msg: "Server error" });
   }
 });
 
-// ✅ Login Route (case-insensitive)
+// ================= LOGIN =================
 router.post("/login", async (req, res) => {
   const { username, password, role } = req.body;
-  console.log("🟢 Incoming login:", { username, role });
 
   try {
-    // 🔍 Case-insensitive username & role match
     const user = await User.findOne({
       username: { $regex: new RegExp(`^${username}$`, "i") },
       role: { $regex: new RegExp(`^${role}$`, "i") },
     });
 
     if (!user) {
-      console.log("🔴 User not found");
       return res.status(401).json({ msg: "Invalid credentials" });
     }
 
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
-      console.log("🔴 Password mismatch");
       return res.status(401).json({ msg: "Invalid credentials" });
     }
 
-    console.log(`✅ Login successful for ${username} (${user.role})`);
+    console.log("✅ Login success:", user.username, user.department);
 
-    let department = "";
+    // ✅ SEND department from DB (NO HACK)
+    res.json({
+      msg: "Login Successful",
+      user: {
+        username: user.username,
+        role: user.role,
+        department: user.department || "" // 🔥
+      }
+    });
 
-    if (user.role.toLowerCase() === "hod") {
-    const parts = user.username.split("_"); // example: ajay_ece
-
-    if (parts.length > 1) {
-      department = parts[1].toUpperCase(); // ECE
-    }
-  } 
-  res.json({ msg: "Login Successful", user: { username: user.username, role: user.role } });
   } catch (err) {
     console.error("❌ Login Error:", err);
     res.status(500).json({ msg: "DB Error" });
   }
 });
 
-// ✅ Get All Users (excluding passwords)
+// ================= GET USERS =================
 router.get("/users", async (req, res) => {
   try {
     const users = await User.find().select("-password");
     res.json(users);
   } catch (err) {
-    console.error("❌ Error fetching users:", err);
     res.status(500).json({ msg: "Server error" });
   }
 });
 
-// ✅ Get Users by Role
+// ================= GET USERS BY ROLE =================
 router.get("/users/:role", async (req, res) => {
   try {
     const { role } = req.params;
+
     const users = await User.find({
       role: { $regex: new RegExp(`^${role}$`, "i") },
     }).select("-password");
 
     if (users.length === 0) {
-      return res.status(404).json({ msg: `No users found with role: ${role}` });
+      return res.status(404).json({ msg: "No users found" });
     }
 
     res.json(users);
+
   } catch (err) {
-    console.error("❌ Error fetching role users:", err);
     res.status(500).json({ msg: "Server error" });
   }
 });
 
-export default router; 
+export default router;

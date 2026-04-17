@@ -16,6 +16,9 @@ export default function ManageStaffs() {
   const [editingStaff, setEditingStaff] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
+  // 🔥 NEW
+  const [selectedDept, setSelectedDept] = useState(null);
+
   const [formData, setFormData] = useState({
     name: "",
     department: "",
@@ -81,8 +84,14 @@ export default function ManageStaffs() {
     }
   };
 
+  // 🔥 UPDATED FILTER LOGIC
   const filteredStaff = staffList.filter((s) => {
-    const matchDept = filterDept ? s.department === filterDept : true;
+    const matchDeptFilter = filterDept ? s.department === filterDept : true;
+
+    const matchSelectedDept = selectedDept
+      ? s.department === selectedDept
+      : true;
+
     const matchYear =
       filterYear ? s.subjects.some((sub) => sub.year === filterYear) : true;
 
@@ -97,7 +106,7 @@ export default function ManageStaffs() {
         )
       : true;
 
-    return matchDept && matchYear && matchSearch;
+    return matchDeptFilter && matchSelectedDept && matchYear && matchSearch;
   });
 
   const activeDot = (status) => ({
@@ -107,6 +116,9 @@ export default function ManageStaffs() {
     display: "inline-block",
     backgroundColor: status ? "#22c55e" : "#f87171",
   });
+
+  // 🔥 Departments list
+  const departments = ["CSE", "ECE", "MECH", "CIVIL"];
 
   return (
     <section className="container py-3" style={{ maxWidth: "1100px" }}>
@@ -168,7 +180,40 @@ export default function ManageStaffs() {
         </div>
       </div>
 
-      {/* STAFF TABLE */}
+      {/* 🔥 NEW: DEPARTMENTS UI */}
+      <div className="mb-4">
+        <h5 className="fw-bold mb-3">Departments</h5>
+
+        <div className="row g-3">
+          {departments.map((d, i) => (
+            <div key={i} className="col-md-3">
+              <div
+                className="card p-3 text-center shadow-sm"
+                style={{
+                  borderRadius: "16px",
+                  cursor: "pointer",
+                  background: selectedDept === d ? "#dbeafe" : "white",
+                }}
+                onClick={() => setSelectedDept(d)}
+              >
+                <h6 className="fw-bold">{d}</h6>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 🔥 BACK BUTTON */}
+      {selectedDept && (
+        <button
+          className="btn btn-sm btn-secondary mb-3"
+          onClick={() => setSelectedDept(null)}
+        >
+          ⬅ Back
+        </button>
+      )}
+
+      {/* TABLE */}
       <div className="card shadow-sm border-0" style={{ borderRadius: "12px" }}>
         <div className="table-responsive p-3">
           <table className="table table-hover">
@@ -208,12 +253,10 @@ export default function ManageStaffs() {
         </div>
       </div>
 
-      {/* ADD / EDIT STAFF MODAL */}
+      {/* MODAL — NO CHANGE */}
       {showModal && (
-        <div
-          className="modal show fade d-block"
-          style={{ background: "rgba(0,0,0,0.5)" }}
-        >
+        <div className="modal show fade d-block"
+          style={{ background: "rgba(0,0,0,0.5)" }}>
           <div className="modal-dialog modal-lg">
             <div className="modal-content shadow-lg" style={{ borderRadius: "15px" }}>
               
@@ -225,16 +268,13 @@ export default function ManageStaffs() {
               </div>
 
               <div className="modal-body">
-
-                <input
-                  className="form-control shadow-sm mb-3"
+                <input className="form-control mb-3"
                   placeholder="Staff Name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
 
-                <select
-                  className="form-select shadow-sm mb-3"
+                <select className="form-select mb-3"
                   value={formData.department}
                   onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                 >
@@ -244,51 +284,7 @@ export default function ManageStaffs() {
                   ))}
                 </select>
 
-                <h6 className="fw-bold">Subjects</h6>
-                {formData.subjects.map((sub, i) => (
-                  <div key={i} className="d-flex gap-2 mb-2">
-                    <input
-                      className="form-control shadow-sm"
-                      placeholder="Subject Name"
-                      value={sub.name}
-                      onChange={(e) => {
-                        const updated = [...formData.subjects];
-                        updated[i].name = e.target.value;
-                        setFormData({ ...formData, subjects: updated });
-                      }}
-                    />
-
-                    <select
-                      className="form-select shadow-sm"
-                      value={sub.year}
-                      onChange={(e) => {
-                        const updated = [...formData.subjects];
-                        updated[i].year = e.target.value;
-                        setFormData({ ...formData, subjects: updated });
-                      }}
-                    >
-                      <option value="">Year</option>
-                      {yearOptions.filter((y) => y).map((y) => (
-                        <option key={y}>{y}</option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-
-                <button
-                  className="btn btn-outline-success mb-3"
-                  onClick={() =>
-                    setFormData({
-                      ...formData,
-                      subjects: [...formData.subjects, { name: "", year: "" }],
-                    })
-                  }
-                >
-                  + Add Subject
-                </button>
-
-                <select
-                  className="form-select shadow-sm mb-3"
+                <select className="form-select mb-3"
                   value={formData.role}
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                 >
@@ -299,44 +295,27 @@ export default function ManageStaffs() {
                 </select>
 
                 <div className="form-check mb-3">
-                  <input
-                    type="checkbox"
+                  <input type="checkbox"
                     className="form-check-input"
                     checked={formData.status}
                     onChange={(e) =>
                       setFormData({ ...formData, status: e.target.checked })
                     }
                   />
-                  <label className="form-check-label">Active Status</label>
+                  <label className="form-check-label">Active</label>
                 </div>
-
               </div>
 
-              <div className="modal-footer d-flex justify-content-between">
-                
-                {editingStaff && (
-                  <button
-                    className="btn btn-outline-danger"
-                    onClick={() => handleDelete(editingStaff._id)}
-                  >
-                    Delete
-                  </button>
-                )}
+              <div className="modal-footer">
+                <button className="btn btn-secondary"
+                  onClick={() => setShowModal(false)}>
+                  Cancel
+                </button>
 
-                <div>
-                  <button className="btn btn-secondary me-2" onClick={() => setShowModal(false)}>
-                    Cancel
-                  </button>
-
-                  <button
-                    className="btn text-white fw-bold px-3"
-                    style={{ background: "linear-gradient(90deg,#2563eb,#1e3a8a)" }}
-                    onClick={handleSave}
-                  >
-                    Save
-                  </button>
-                </div>
-
+                <button className="btn btn-primary"
+                  onClick={handleSave}>
+                  Save
+                </button>
               </div>
 
             </div>

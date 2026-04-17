@@ -17,24 +17,70 @@ function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await axios.post("https://attendance-spell-management.onrender.com/api/auth/login", {
-        username,
-        password,
-        role,
-      });
+      const res = await axios.post(
+        "http://localhost:3001/api/auth/login",
+        {
+          username,
+          password,
+          role,
+        }
+      );
+      console.log("LOGIN RESPONSE:", res.data);
 
       setLoading(false);
       setToastMsg(res.data.msg);
 
       if (res.data.msg === "Login Successful") {
-        const userRole = res.data.user.role?.toLowerCase(); // ✅ case-insensitive check
-        localStorage.setItem("user", JSON.stringify(res.data.user));
+        const userRole = res.data.user.role?.toLowerCase();
+
+        // ✅ FIX: always save department properly
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            username: res.data.user.username,
+            role: res.data.user.role,
+            department: res.data.user.department,
+          })
+        );
+        console.log("SAVED USER:", {
+          username: res.data.user.username,
+          role: res.data.user.role,
+          department: res.data.user.department
+        });
 
         setTimeout(() => {
-          if (userRole === "admin") navigate("/dashboard-admin");
-          else if (userRole === "hod") navigate("/dashboard-hod");
-          else if (userRole === "staff") navigate("/dashboard-staff");
-          else alert("Unknown role: " + userRole);
+          if (userRole === "admin") {
+            navigate("/dashboard-admin");
+          }
+
+          else if (userRole === "hod") {
+            // ✅ NO username split
+            localStorage.setItem(
+              "hodData",
+              JSON.stringify({
+                username: res.data.user.username,
+                role: res.data.user.role,
+                department: res.data.user.department,
+              })
+            );
+
+            navigate("/dashboard-hod");
+          }
+
+          else if (userRole === "staff") {
+            // ✅ FIXED (no split hack)
+            localStorage.setItem(
+              "staffData",
+              JSON.stringify({
+                username: res.data.user.username,
+                role: res.data.user.role,
+                department: res.data.user.department,
+              })
+            );
+
+            navigate("/dashboard-staff");
+          }
+
         }, 1000);
       }
     } catch (err) {
@@ -82,19 +128,14 @@ function LoginPage() {
           border: "1px solid rgba(255, 255, 255, 0.3)",
           borderRadius: "25px",
           zIndex: 2,
-          transform: "translateY(0)",
           animation: "floatUp 0.8s ease",
         }}
       >
-        {/* Logo */}
         <img
           src="/chendhuran-logo.png"
           alt="College Logo"
           className="mb-3 mx-auto d-block"
-          style={{
-            width: "100px",
-            borderRadius: "10px",
-          }}
+          style={{ width: "100px", borderRadius: "10px" }}
         />
 
         <h2 className="fw-bold text-white mb-2">College Attendance</h2>
@@ -162,21 +203,16 @@ function LoginPage() {
             </button>
           </div>
 
-          <button
-            type="submit"
-            className="btn btn-lg w-100 fw-bold text-white"
+          <button className="btn btn-lg w-100 fw-bold text-white"
             style={{
               background: "linear-gradient(to right, #4e54c8, #8f94fb)",
               borderRadius: "12px",
-              fontSize: "18px",
-              transition: "0.3s",
             }}
           >
             {loading ? "Loading..." : "Login"}
           </button>
         </form>
 
-        {/* Toast Message */}
         {toastMsg && (
           <div
             className="toast show position-absolute start-50 translate-middle-x mt-3"
@@ -185,9 +221,7 @@ function LoginPage() {
               padding: "10px 20px",
               borderRadius: "12px",
               color: "#fff",
-              fontWeight: "bold",
               bottom: "-60px",
-              zIndex: 3,
             }}
           >
             {toastMsg}
@@ -195,7 +229,6 @@ function LoginPage() {
         )}
       </div>
 
-      {/* Animation */}
       <style>
         {`
         @keyframes floatUp {

@@ -23,5 +23,18 @@ export const getHODDashboardCounts = async (department) => {
   }
 };
 
+// 🧩 STAFF Dashboard Counts
+export const getStaffDashboardData = async (department) => {
+  try {
+    const res = await axios.get(
+      `${BASE_URL}/dashboard/staff-details/${department}`
+    );
+    return res;
+  } catch (err) {
+    console.error("❌ Staff dashboard error:", err);
+    throw err;
+  }
+};
+
 export const getDepartmentDetails = (dept) =>
   axios.get(`${BASE_URL}/dashboard/department-details/${dept}`);
