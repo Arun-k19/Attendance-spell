@@ -4,6 +4,7 @@ const menu = [
   { key: "dashboard",      label: "Dashboard",       icon: "📊" },
   { key: "manageHOD",      label: "Manage HOD",      icon: "🧑‍💼" },
   { key: "manageStaff",    label: "Manage Staff",    icon: "👨‍🏫" },
+  { key: "manageUsers", label: "Manage Users", icon: "👤" },
   { key: "manageStudents", label: "Manage Students", icon: "🎓" },
   { key: "attendance",     label: "Attendance",      icon: "📅" },
   { key: "reports",        label: "Reports",         icon: "📄" },

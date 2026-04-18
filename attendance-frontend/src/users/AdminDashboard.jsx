@@ -3,6 +3,7 @@ import AdminSidebar from "../components/Admin/AdminSidebar";
 import AdminNavbar from "../components/Admin/AdminNavbar";
 import ManageStudents from "../Pages/ManageStudents";
 import ManageStaffs from "../Pages/ManageStaffs";
+import ManageUsers from "../Pages/ManageUsers";
 import ManageHods from "../Pages/ManageHods";
 import AttendancePage from "../Pages/AttendancePage";
 import Reports from "../Pages/Reports";
@@ -304,9 +305,10 @@ export default function AdminDashboard() {
           {activeTab === "manageStudents" && <ManageStudents />}
           {activeTab === "manageStaff"    && <ManageStaffs />}
           {activeTab === "manageHOD"      && <ManageHods />}
+          {activeTab === "manageUsers" && <ManageUsers />}
           {activeTab === "attendance"     && <AttendancePage />}
           {activeTab === "reports"        && <Reports />}
-
+          
         </main>
       </div>
     </div>
