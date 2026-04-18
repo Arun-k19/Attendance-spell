@@ -1,15 +1,16 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
+import Hod from "../models/Hod.js"; // 🔥 IMPORTANT
 
 const router = express.Router();
 
-// ✅ Schema (🔥 department added)
+// ================= SCHEMA =================
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true },
   password: { type: String, required: true },
   role: { type: String, required: true },
-  department: { type: String } // ✅ NEW FIELD
+  department: { type: String } // optional
 });
 
 const User = mongoose.models.User || mongoose.model("User", userSchema);
@@ -39,7 +40,7 @@ router.post("/register", async (req, res) => {
       username: username.trim(),
       password: hashedPassword,
       role: role.trim(),
-      department: department ? department.toUpperCase() : "" // ✅ SAVE
+      department: department ? department.toUpperCase() : ""
     });
 
     await newUser.save();
@@ -71,15 +72,27 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ msg: "Invalid credentials" });
     }
 
-    console.log("✅ Login success:", user.username, user.department);
+    let department = user.department || "";
 
-    // ✅ SEND department from DB (NO HACK)
+    // 🔥 HOD department fetch from Hod collection
+    if (user.role.toUpperCase() === "HOD") {
+      const hod = await Hod.findOne({
+        username: { $regex: new RegExp(`^${user.username}$`, "i") }
+      });
+
+      if (hod) {
+        department = hod.department;
+      }
+    }
+
+    console.log("✅ Login:", user.username, "Dept:", department);
+
     res.json({
       msg: "Login Successful",
       user: {
         username: user.username,
         role: user.role,
-        department: user.department || "" // 🔥
+        department: department // 🔥 FIXED
       }
     });
 

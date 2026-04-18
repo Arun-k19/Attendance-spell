@@ -1,3 +1,4 @@
+import axios from "axios";
 import React, { useEffect, useState } from "react";
 import HODSidebar from "../components/Hod/HODSidebar";
 import HODNavbar from "../components/Hod/HODNavbar";
@@ -30,39 +31,44 @@ export default function HodDashboard() {
     return () => clearInterval(timer);
   }, []);
 
-  // ✅ GET LOGGED-IN HOD's DEPARTMENT
+  // ✅ SET DEPARTMENT FROM LOGIN
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user"));
-    if (user?.department) {
-      setDept(user.department.toUpperCase());
-    }
+
+    if (!user?.department) return;
+
+    setDept(user.department); // 🔥 ONLY THIS
   }, []);
 
-  // ✅ FETCH COUNTS — only for this dept
+  // ✅ FETCH COUNTS
   useEffect(() => {
     if (!dept) return;
+
     const fetchCounts = async () => {
       try {
         const res = await getHODDashboardCounts(dept);
         setCounts(res.data);
       } catch (err) {
-        console.error(err);
+        console.error("Counts error:", err);
       }
     };
+
     fetchCounts();
   }, [dept]);
 
-  // ✅ FETCH FULL DEPT DATA — students & staff filtered by dept from backend
+  // ✅ FETCH FULL DEPARTMENT DATA
   useEffect(() => {
     if (!dept) return;
+
     const fetchDept = async () => {
       try {
         const res = await getDepartmentDetails(dept);
         setDeptData(res.data);
       } catch (err) {
-        console.error("dept error", err);
+        console.error("Dept error:", err);
       }
     };
+
     fetchDept();
   }, [dept]);
 
@@ -71,10 +77,13 @@ export default function HodDashboard() {
     window.location.href = "/";
   };
 
-  // ✅ YEAR FILTER — fix: compare as String
-  const filteredStudents = deptData?.students?.filter((s) =>
-    selectedYear === "all" ? true : String(s.year) === String(selectedYear)
-  ) ?? [];
+  // ✅ FILTERS
+  const filteredStudents =
+    deptData?.students?.filter((s) =>
+      selectedYear === "all"
+        ? true
+        : String(s.year) === String(selectedYear)
+    ) ?? [];
 
   const filteredStaff = deptData?.staff ?? [];
 
@@ -90,12 +99,12 @@ export default function HodDashboard() {
         <HODNavbar now={now} dept={dept} />
 
         <main className="container-fluid p-4">
-
           {activeTab === "dashboard" && (
             <>
-              <h3 className="fw-bold mb-3">{dept} Department Dashboard</h3>
+              <h3 className="fw-bold mb-3">
+                {dept} Department Dashboard
+              </h3>
 
-              {/* Banner */}
               <div className="card text-white bg-primary shadow-sm mb-4 rounded-4">
                 <div className="card-body">
                   <h5 className="fw-bold">Welcome, HOD 👨‍🏫</h5>
@@ -117,6 +126,7 @@ export default function HodDashboard() {
                     </h2>
                   </div>
                 </div>
+
                 <div className="col-md-4">
                   <div className="card text-center p-4 rounded-4 shadow-sm">
                     <small className="text-muted">
@@ -127,6 +137,7 @@ export default function HodDashboard() {
                     </h2>
                   </div>
                 </div>
+
                 <div className="col-md-4">
                   <div className="card text-center p-4 rounded-4 shadow-sm">
                     <small className="text-muted">
@@ -139,45 +150,15 @@ export default function HodDashboard() {
                 </div>
               </div>
 
-              {/* Quick Links */}
-              <div className="row g-4 mb-4">
-                <div className="col-md-6">
-                  <div className="card shadow-sm p-4 rounded-4">
-                    <h5>📘 Attendance</h5>
-                    <p className="text-muted">
-                      Mark and manage attendance easily.
-                    </p>
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => setActiveTab("attendance")}
-                    >
-                      Go to Attendance
-                    </button>
-                  </div>
-                </div>
-                <div className="col-md-6">
-                  <div className="card shadow-sm p-4 rounded-4">
-                    <h5>📊 Reports</h5>
-                    <p className="text-muted">
-                      Generate department reports.
-                    </p>
-                    <button
-                      className="btn btn-success"
-                      onClick={() => setActiveTab("reports")}
-                    >
-                      View Reports
-                    </button>
-                  </div>
-                </div>
-              </div>
-
               {/* YEAR FILTER */}
               <div className="mb-3">
                 {["all", "1", "2", "3", "4"].map((y) => (
                   <button
                     key={y}
                     className={`btn me-2 ${
-                      selectedYear === y ? "btn-primary" : "btn-light"
+                      selectedYear === y
+                        ? "btn-primary"
+                        : "btn-light"
                     }`}
                     style={{ borderRadius: "20px" }}
                     onClick={() => setSelectedYear(y)}
@@ -188,8 +169,7 @@ export default function HodDashboard() {
               </div>
 
               <div className="row g-4">
-
-                {/* STUDENTS — dept-filtered + year-filtered */}
+                {/* STUDENTS */}
                 <div className="col-md-6">
                   <div className="card p-3 shadow-sm rounded-4">
                     <h6 className="fw-bold mb-1">
@@ -201,31 +181,24 @@ export default function HodDashboard() {
                     <small className="text-muted mb-3 d-block">
                       {dept} Department
                     </small>
-                    <div style={{ maxHeight: "280px", overflowY: "auto" }}>
-                      {filteredStudents.length === 0 ? (
-                        <p className="text-muted text-center small mt-3">
-                          No students found
-                        </p>
-                      ) : (
-                        <ul className="list-group list-group-flush">
-                          {filteredStudents.map((s, i) => (
-                            <li
-                              key={i}
-                              className="list-group-item d-flex justify-content-between align-items-center px-0"
-                            >
-                              <span className="small">{s.name}</span>
-                              <span className="badge bg-primary rounded-pill">
-                                Y{s.year}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
+
+                    {filteredStudents.length === 0 ? (
+                      <p className="text-muted text-center">
+                        No students found
+                      </p>
+                    ) : (
+                      <ul className="list-group">
+                        {filteredStudents.map((s, i) => (
+                          <li key={i} className="list-group-item">
+                            {s.name} - Y{s.year}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </div>
 
-                {/* STAFF — dept-filtered */}
+                {/* STAFF */}
                 <div className="col-md-6">
                   <div className="card p-3 shadow-sm rounded-4">
                     <h6 className="fw-bold mb-1">
@@ -237,24 +210,22 @@ export default function HodDashboard() {
                     <small className="text-muted mb-3 d-block">
                       {dept} Department
                     </small>
-                    <div style={{ maxHeight: "280px", overflowY: "auto" }}>
-                      {filteredStaff.length === 0 ? (
-                        <p className="text-muted text-center small mt-3">
-                          No staff found
-                        </p>
-                      ) : (
-                        <ul className="list-group list-group-flush">
-                          {filteredStaff.map((s, i) => (
-                            <li key={i} className="list-group-item px-0 small">
-                              {s.name}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
+
+                    {filteredStaff.length === 0 ? (
+                      <p className="text-muted text-center">
+                        No staff found
+                      </p>
+                    ) : (
+                      <ul className="list-group">
+                        {filteredStaff.map((s, i) => (
+                          <li key={i} className="list-group-item">
+                            {s.name}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </div>
-
               </div>
             </>
           )}
@@ -266,13 +237,11 @@ export default function HodDashboard() {
             <ManageStaffs restrictedDept={dept} />
           )}
           {activeTab === "attendance" && (
-            // ✅ dept pass பண்றோம் — AttendancePage-ல் department auto-fill ஆகும்
             <AttendancePage restrictedDept={dept} />
           )}
           {activeTab === "reports" && (
             <Reports restrictedDept={dept} />
           )}
-
         </main>
       </div>
     </div>

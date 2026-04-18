@@ -14,7 +14,13 @@ const ROLE_CONFIG = {
 const getInitials = (name = "") =>
   name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
-const emptyUser = () => ({ name: "", role: "Staff", username: "", password: "" });
+const emptyUser = () => ({
+  name: "",
+  role: "Staff",
+  username: "",
+  password: "",
+  department: "" // 🔥 ADD THIS
+});
 
 // ── Role Radio Button Group ──────────────────────────────
 const RoleRadioGroup = ({ value, onChange }) => (
@@ -150,8 +156,19 @@ export default function ManageUsers() {
         axios.get(BASE_HOD),
         axios.get(BASE_STAFF),
       ]);
-      const hods  = (hodRes.data  || []).map((h) => ({ name: h.name, role: "HOD"   }));
-      const staff = (staffRes.data || []).map((s) => ({ name: s.name, role: "Staff" }));
+
+      const hods = (hodRes.data || []).map((h) => ({
+        name: h.name,
+        role: "HOD",
+        department: h.department // 🔥 ADD
+      }));
+
+      const staff = (staffRes.data || []).map((s) => ({
+        name: s.name,
+        role: "Staff",
+        department: s.department // 🔥 ADD
+      }));
+
       setCollegeNames([...hods, ...staff]);
     } catch (err) {
       console.error("Failed to load college names:", err);
@@ -226,7 +243,12 @@ export default function ManageUsers() {
   };
 
   const selectSuggestion = (s) => {
-    setNewUser({ ...newUser, name: s.name, role: s.role });
+    setNewUser({
+      ...newUser,
+      name: s.name,
+      role: s.role,
+      department: s.department || "" // 🔥 ADD THIS
+    });
     setNameSuggestions([]);
     setShowDropdown(false);
     setNameError("");
@@ -251,21 +273,26 @@ export default function ManageUsers() {
     const isValid = collegeNames.find(
       (u) => u.name.toLowerCase() === newUser.name.toLowerCase()
     );
+
     if (!isValid)          return alert("❌ User not in our college records!");
     if (!newUser.username) return alert("Enter a username!");
     if (!newUser.password) return alert("Enter a password!");
+
     try {
       const res = await axios.post(`${BASE}/register`, {
-        name:     newUser.name,
+        name: newUser.name,
         username: newUser.username,
         password: newUser.password,
-        role:     newUser.role,
+        role: newUser.role,
+        department: newUser.department // 🔥 ADD THIS
       });
+
       alert(res.data.msg || "User added!");
       setShowAddModal(false);
       setNewUser(emptyUser());
       setNameError("");
       loadUsers();
+
     } catch (err) {
       alert(err.response?.data?.msg || "Error adding user");
     }
