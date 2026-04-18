@@ -14,9 +14,9 @@ const DEPT_CONFIG = {
 
 const YEAR_LABELS = { "1": "I Year", "2": "II Year", "3": "III Year", "4": "IV Year" };
 
-const DEPARTMENTS   = ["CSE", "IT", "ECE", "MECH", "CIVIL", "EEE"];
-const ROLE_OPTIONS  = ["Faculty", "Lab Incharge"];
-const YEAR_OPTIONS  = ["1", "2", "3", "4"];
+const ALL_DEPARTMENTS = ["CSE", "IT", "ECE", "MECH", "CIVIL", "EEE"];
+const ROLE_OPTIONS    = ["Faculty", "Lab Incharge"];
+const YEAR_OPTIONS    = ["1", "2", "3", "4"];
 
 const getInitials = (name = "") =>
   name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -30,10 +30,21 @@ const emptyForm = () => ({
 });
 
 export default function ManageStaffs() {
+
+  // ── Role detect from localStorage ───────────────────────
+  const userData = JSON.parse(localStorage.getItem("user")    || "{}");
+  const hodData  = JSON.parse(localStorage.getItem("hodData") || "{}");
+  const userRole = userData?.role?.toLowerCase();   // "admin" | "hod"
+  const isHOD    = userRole === "hod";
+  const hodDept  = isHOD ? (hodData?.department || "") : ""; // "CSE" | "MECH" | etc
+
+  // HOD → only his dept; Admin → all 6
+  const DEPARTMENTS = isHOD ? [hodDept] : ALL_DEPARTMENTS;
+
   const [staffList,     setStaffList]     = useState([]);
   const [selectedDept,  setSelectedDept]  = useState(null);
   const [searchTerm,    setSearchTerm]    = useState("");
-  const [selectedStaff, setSelectedStaff] = useState(null); // view card
+  const [selectedStaff, setSelectedStaff] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingStaff,  setEditingStaff]  = useState(null);
@@ -44,19 +55,20 @@ export default function ManageStaffs() {
   const fetchStaff = async () => {
     try {
       const res = await axios.get(`${BASE_URL}/staff`);
-      setStaffList(res.data);
+      // HOD → only his dept staff | Admin → all staff
+      const data = isHOD
+        ? res.data.filter((s) => s.department === hodDept)
+        : res.data;
+      setStaffList(data);
     } catch {
       alert("Failed to load staff data!");
     }
   };
 
-  // ── Filter logic ───────────────────────────────────────
-  // No dept selected → nothing shown (only search results)
+  // ── Filter logic ────────────────────────────────────────
   const filteredStaff = staffList.filter((s) => {
     const matchDept = selectedDept ? s.department === selectedDept : false;
-
     if (!searchTerm) return matchDept;
-
     const q = searchTerm.toLowerCase();
     const matchSearch =
       s.name.toLowerCase().includes(q) ||
@@ -67,12 +79,10 @@ export default function ManageStaffs() {
           sub.name.toLowerCase().includes(q) ||
           sub.year.toLowerCase().includes(q)
       );
-
-    // If searching, show across all depts; if dept selected too, combine
     return selectedDept ? matchDept && matchSearch : matchSearch;
   });
 
-  // ── CRUD ───────────────────────────────────────────────
+  // ── CRUD ────────────────────────────────────────────────
   const handleSave = async () => {
     if (!formData.name || !formData.department || !formData.role) {
       alert("Please fill all required fields!");
@@ -109,7 +119,8 @@ export default function ManageStaffs() {
 
   const openAdd = () => {
     setEditingStaff(null);
-    setFormData(emptyForm());
+    // HOD → department auto-set & locked | Admin → free select
+    setFormData({ ...emptyForm(), department: isHOD ? hodDept : "" });
     setShowEditModal(true);
   };
 
@@ -120,7 +131,6 @@ export default function ManageStaffs() {
     setShowEditModal(true);
   };
 
-  // Subject helpers
   const updateSubject = (idx, field, value) => {
     const subs = [...formData.subjects];
     subs[idx] = { ...subs[idx], [field]: value };
@@ -129,7 +139,7 @@ export default function ManageStaffs() {
   const addSubject    = () => setFormData({ ...formData, subjects: [...formData.subjects, { name: "", year: "" }] });
   const removeSubject = (idx) => setFormData({ ...formData, subjects: formData.subjects.filter((_, i) => i !== idx) });
 
-  // ── Render ─────────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────
   return (
     <section className="container py-3" style={{ maxWidth: "1100px" }}>
 
@@ -137,7 +147,11 @@ export default function ManageStaffs() {
       <div className="d-flex justify-content-between align-items-center mb-3">
         <div>
           <h3 className="fw-bold text-primary mb-0">Manage Staff</h3>
-          <small className="text-muted">{staffList.length} staff total</small>
+          <small className="text-muted">
+            {isHOD
+              ? `${hodDept} Department — ${staffList.length} staff`
+              : `${staffList.length} staff total`}
+          </small>
         </div>
         <button
           className="btn text-white fw-bold px-4"
@@ -158,15 +172,15 @@ export default function ManageStaffs() {
         />
       </div>
 
-      {/* DEPARTMENT CARDS */}
+      {/* DEPARTMENT CARDS — HOD: only 1 card | Admin: all 6 */}
       {!searchTerm && (
         <div className="mb-4">
           <h5 className="fw-bold mb-3">Departments</h5>
           <div className="row g-3">
             {DEPARTMENTS.map((d) => {
-              const cfg     = DEPT_CONFIG[d];
-              const count   = staffList.filter((s) => s.department === d).length;
-              const active  = selectedDept === d;
+              const cfg    = DEPT_CONFIG[d];
+              const count  = staffList.filter((s) => s.department === d).length;
+              const active = selectedDept === d;
               return (
                 <div key={d} className="col-md-2 col-sm-4 col-6">
                   <div
@@ -196,8 +210,6 @@ export default function ManageStaffs() {
       {/* STAFF TABLE */}
       {(selectedDept || searchTerm) && (
         <div className="card shadow-sm border-0" style={{ borderRadius: "16px", overflow: "hidden" }}>
-
-          {/* Table header bar */}
           <div
             className="px-4 py-3 d-flex justify-content-between align-items-center"
             style={{
@@ -292,7 +304,7 @@ export default function ManageStaffs() {
         </div>
       )}
 
-      {/* Empty state when no dept selected and no search */}
+      {/* Empty state */}
       {!selectedDept && !searchTerm && (
         <div className="text-center py-5 text-muted">
           <div style={{ fontSize: 48 }}>☝️</div>
@@ -300,7 +312,7 @@ export default function ManageStaffs() {
         </div>
       )}
 
-      {/* ── VIEW MODAL ───────────────────────────────────── */}
+      {/* ── VIEW MODAL ──────────────────────────────────────── */}
       {showViewModal && selectedStaff && (() => {
         const cfg = DEPT_CONFIG[selectedStaff.department] || { color: "#2563eb", bg: "#eff6ff", emoji: "🏫" };
         return (
@@ -308,12 +320,8 @@ export default function ManageStaffs() {
                onClick={() => setShowViewModal(false)}>
             <div className="modal-dialog modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
               <div className="modal-content border-0 shadow-lg" style={{ borderRadius: "20px", overflow: "hidden" }}>
-
-                {/* Color strip */}
                 <div style={{ height: 8, background: cfg.color }} />
-
                 <div className="modal-body p-4">
-                  {/* Avatar + Name */}
                   <div className="text-center mb-4">
                     <div style={{
                       width: 72, height: 72, borderRadius: "50%",
@@ -334,8 +342,6 @@ export default function ManageStaffs() {
                       {cfg.emoji} {selectedStaff.department}
                     </span>
                   </div>
-
-                  {/* Info */}
                   <div className="rounded-3 p-3 mb-3" style={{ background: "#f8fafc" }}>
                     <div className="d-flex justify-content-between py-2 border-bottom">
                       <span className="text-muted">Role</span>
@@ -351,8 +357,6 @@ export default function ManageStaffs() {
                         {selectedStaff.status ? "✅ Active" : "❌ Inactive"}
                       </span>
                     </div>
-
-                    {/* Subjects */}
                     <div className="pt-2">
                       <span className="text-muted d-block mb-2">Subjects & Years</span>
                       {selectedStaff.subjects?.filter(s => s.name).length === 0 ? (
@@ -370,7 +374,6 @@ export default function ManageStaffs() {
                     </div>
                   </div>
                 </div>
-
                 <div className="modal-footer border-0 d-flex justify-content-between px-4 pb-4">
                   <button className="btn btn-danger" onClick={() => handleDelete(selectedStaff._id)}>
                     🗑 Delete
@@ -388,46 +391,50 @@ export default function ManageStaffs() {
                     </button>
                   </div>
                 </div>
-
               </div>
             </div>
           </div>
         );
       })()}
 
-      {/* ── EDIT / ADD MODAL ─────────────────────────────── */}
+      {/* ── EDIT / ADD MODAL ────────────────────────────────── */}
       {showEditModal && (
         <div className="modal show fade d-block" style={{ background: "rgba(0,0,0,0.5)" }}>
           <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div className="modal-content border-0 shadow-lg p-3" style={{ borderRadius: "20px" }}>
-
               <div className="modal-header border-0">
                 <h5 className="fw-bold text-primary">{editingStaff ? "✏️ Edit Staff" : "➕ Add Staff"}</h5>
                 <button className="btn-close" onClick={() => setShowEditModal(false)} />
               </div>
-
               <div className="modal-body">
 
-                {/* Name */}
                 <label className="form-label fw-semibold">Staff Name</label>
                 <input className="form-control mb-3 shadow-sm" placeholder="Enter name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
 
-                {/* Department */}
                 <label className="form-label fw-semibold">Department</label>
-                <select className="form-select mb-3 shadow-sm"
-                  value={formData.department}
-                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                >
-                  <option value="">Select Department</option>
-                  {DEPARTMENTS.map((d) => (
-                    <option key={d} value={d}>{DEPT_CONFIG[d].emoji} {d}</option>
-                  ))}
-                </select>
+                {/* HOD → locked to his dept | Admin → free dropdown */}
+                {isHOD ? (
+                  <input
+                    className="form-control mb-3 shadow-sm fw-bold"
+                    value={hodDept}
+                    disabled
+                    style={{ background: "#f1f5f9", color: "#2563eb" }}
+                  />
+                ) : (
+                  <select className="form-select mb-3 shadow-sm"
+                    value={formData.department}
+                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                  >
+                    <option value="">Select Department</option>
+                    {ALL_DEPARTMENTS.map((d) => (
+                      <option key={d} value={d}>{DEPT_CONFIG[d].emoji} {d}</option>
+                    ))}
+                  </select>
+                )}
 
-                {/* Role */}
                 <label className="form-label fw-semibold">Role</label>
                 <select className="form-select mb-3 shadow-sm"
                   value={formData.role}
@@ -437,7 +444,6 @@ export default function ManageStaffs() {
                   {ROLE_OPTIONS.map((r) => <option key={r}>{r}</option>)}
                 </select>
 
-                {/* Subjects */}
                 <label className="form-label fw-semibold">Subjects</label>
                 {formData.subjects.map((sub, idx) => (
                   <div key={idx} className="d-flex gap-2 mb-2 align-items-center">
@@ -461,7 +467,6 @@ export default function ManageStaffs() {
                   + Add Subject
                 </button>
 
-                {/* Status toggle */}
                 <div className="form-check form-switch mt-2">
                   <input type="checkbox" className="form-check-input"
                     style={{ width: "40px", height: "20px" }}

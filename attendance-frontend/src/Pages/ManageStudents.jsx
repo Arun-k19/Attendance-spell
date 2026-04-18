@@ -17,8 +17,8 @@ const YEAR_LABELS = {
   all: "All", "1": "I Year", "2": "II Year", "3": "III Year", "4": "IV Year",
 };
 
-const DEPARTMENTS  = ["CSE", "IT", "ECE", "MECH", "CIVIL", "EEE"];
-const YEAR_OPTIONS = ["1", "2", "3", "4"];
+const ALL_DEPARTMENTS = ["CSE", "IT", "ECE", "MECH", "CIVIL", "EEE"];
+const YEAR_OPTIONS    = ["1", "2", "3", "4"];
 
 const getInitials = (name = "") =>
   name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -26,9 +26,20 @@ const getInitials = (name = "") =>
 const emptyStudent = () => ({ regNo: "", name: "", dept: "", year: "" });
 
 export default function ManageStudents() {
+
+  // ── Role detect from localStorage ───────────────────────
+  const userData = JSON.parse(localStorage.getItem("user")    || "{}");
+  const hodData  = JSON.parse(localStorage.getItem("hodData") || "{}");
+  const userRole = userData?.role?.toLowerCase();   // "admin" | "hod"
+  const isHOD    = userRole === "hod";
+  const hodDept  = isHOD ? (hodData?.department || "") : ""; // "CSE" | "MECH" | etc
+
+  // HOD → only his dept card | Admin → all 6
+  const DEPARTMENTS = isHOD ? [hodDept] : ALL_DEPARTMENTS;
+
   const [students,        setStudents]        = useState([]);
   const [selectedDept,    setSelectedDept]    = useState(null);
-  const [selectedYear,    setSelectedYear]    = useState("all"); // year tab
+  const [selectedYear,    setSelectedYear]    = useState("all");
   const [searchText,      setSearchText]      = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [showViewModal,   setShowViewModal]   = useState(false);
@@ -43,7 +54,11 @@ export default function ManageStudents() {
   const fetchStudents = async () => {
     try {
       const res = await axios.get(API);
-      setStudents(res.data);
+      // HOD → only his dept students | Admin → all students
+      const data = isHOD
+        ? res.data.filter((s) => s.dept === hodDept)
+        : res.data;
+      setStudents(data);
     } catch { console.error("Fetch error"); }
   };
 
@@ -67,7 +82,6 @@ export default function ManageStudents() {
     return matchDept && matchYear;
   });
 
-  // Count per year for tab badges
   const countForYear = (y) =>
     students.filter((s) =>
       s.dept === selectedDept && (y === "all" ? true : s.year === y)
@@ -133,7 +147,11 @@ export default function ManageStudents() {
       <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
           <h3 className="fw-bold text-primary mb-0">Manage Students</h3>
-          <small className="text-muted">{students.length} students total</small>
+          <small className="text-muted">
+            {isHOD
+              ? `${hodDept} Department — ${students.length} students`
+              : `${students.length} students total`}
+          </small>
         </div>
         <div className="d-flex gap-2 flex-wrap">
           <div className="input-group" style={{ width: "230px" }}>
@@ -143,7 +161,11 @@ export default function ManageStudents() {
           <button
             className="btn text-white fw-bold px-4"
             style={{ background: "linear-gradient(90deg,#2563eb,#1e3a8a)", borderRadius: "10px" }}
-            onClick={() => { setNewStudent(emptyStudent()); setShowAddModal(true); }}
+            onClick={() => {
+              // HOD → dept auto-set | Admin → free select
+              setNewStudent({ ...emptyStudent(), dept: isHOD ? hodDept : "" });
+              setShowAddModal(true);
+            }}
           >
             + Add Student
           </button>
@@ -160,7 +182,7 @@ export default function ManageStudents() {
         />
       </div>
 
-      {/* DEPARTMENT CARDS */}
+      {/* DEPARTMENT CARDS — HOD: only 1 card | Admin: all 6 */}
       {!searchText && (
         <div className="mb-4">
           <h5 className="fw-bold mb-3">Departments</h5>
@@ -200,7 +222,6 @@ export default function ManageStudents() {
       {(selectedDept || searchText) && (
         <div className="card shadow-sm border-0" style={{ borderRadius: "16px", overflow: "hidden" }}>
 
-          {/* Colored header */}
           <div
             className="px-4 py-3 d-flex justify-content-between align-items-center"
             style={{
@@ -225,7 +246,7 @@ export default function ManageStudents() {
             )}
           </div>
 
-          {/* YEAR FILTER TABS — only when dept selected */}
+          {/* YEAR FILTER TABS */}
           {selectedDept && !searchText && (
             <div className="px-4 pt-3 pb-0 d-flex gap-2 flex-wrap"
               style={{ borderBottom: "1px solid #e2e8f0" }}>
@@ -262,7 +283,6 @@ export default function ManageStudents() {
             </div>
           )}
 
-          {/* TABLE */}
           {filteredStudents.length === 0 ? (
             <div className="text-center py-5 text-muted">
               <div style={{ fontSize: 40 }}>🎓</div>
@@ -408,11 +428,20 @@ export default function ManageStudents() {
                 <input className="form-control mb-3 shadow-sm" placeholder="Student Name"
                   value={editData.name} onChange={(e) => setEditData({ ...editData, name: e.target.value })} />
                 <label className="form-label fw-semibold">Department</label>
-                <select className="form-select mb-3 shadow-sm" value={editData.dept}
-                  onChange={(e) => setEditData({ ...editData, dept: e.target.value })}>
-                  <option value="">Select Department</option>
-                  {DEPARTMENTS.map((d) => <option key={d} value={d}>{DEPT_CONFIG[d].emoji} {d}</option>)}
-                </select>
+                {/* HOD → dept locked | Admin → free dropdown */}
+                {isHOD ? (
+                  <input
+                    className="form-control mb-3 shadow-sm fw-bold"
+                    value={hodDept} disabled
+                    style={{ background: "#f1f5f9", color: "#2563eb" }}
+                  />
+                ) : (
+                  <select className="form-select mb-3 shadow-sm" value={editData.dept}
+                    onChange={(e) => setEditData({ ...editData, dept: e.target.value })}>
+                    <option value="">Select Department</option>
+                    {ALL_DEPARTMENTS.map((d) => <option key={d} value={d}>{DEPT_CONFIG[d].emoji} {d}</option>)}
+                  </select>
+                )}
                 <label className="form-label fw-semibold">Year</label>
                 <select className="form-select shadow-sm" value={editData.year}
                   onChange={(e) => setEditData({ ...editData, year: e.target.value })}>
@@ -451,11 +480,20 @@ export default function ManageStudents() {
                 <input className="form-control mb-3 shadow-sm" placeholder="Student Name"
                   value={newStudent.name} onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })} />
                 <label className="form-label fw-semibold">Department</label>
-                <select className="form-select mb-3 shadow-sm" value={newStudent.dept}
-                  onChange={(e) => setNewStudent({ ...newStudent, dept: e.target.value })}>
-                  <option value="">Select Department</option>
-                  {DEPARTMENTS.map((d) => <option key={d} value={d}>{DEPT_CONFIG[d].emoji} {d}</option>)}
-                </select>
+                {/* HOD → dept locked | Admin → free dropdown */}
+                {isHOD ? (
+                  <input
+                    className="form-control mb-3 shadow-sm fw-bold"
+                    value={hodDept} disabled
+                    style={{ background: "#f1f5f9", color: "#2563eb" }}
+                  />
+                ) : (
+                  <select className="form-select mb-3 shadow-sm" value={newStudent.dept}
+                    onChange={(e) => setNewStudent({ ...newStudent, dept: e.target.value })}>
+                    <option value="">Select Department</option>
+                    {ALL_DEPARTMENTS.map((d) => <option key={d} value={d}>{DEPT_CONFIG[d].emoji} {d}</option>)}
+                  </select>
+                )}
                 <label className="form-label fw-semibold">Year</label>
                 <select className="form-select shadow-sm" value={newStudent.year}
                   onChange={(e) => setNewStudent({ ...newStudent, year: e.target.value })}>
