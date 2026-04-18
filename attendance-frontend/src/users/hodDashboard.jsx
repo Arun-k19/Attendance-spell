@@ -30,21 +30,17 @@ export default function HodDashboard() {
     return () => clearInterval(timer);
   }, []);
 
-  // 🔥 GET USER
+  // ✅ GET LOGGED-IN HOD's DEPARTMENT
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user"));
-
-    if (user && user.department) {
+    if (user?.department) {
       setDept(user.department.toUpperCase());
-    } else {
-      console.log("❌ No department found in user");
     }
   }, []);
 
-  // 🔥 FETCH COUNTS
+  // ✅ FETCH COUNTS — only for this dept
   useEffect(() => {
     if (!dept) return;
-
     const fetchCounts = async () => {
       try {
         const res = await getHODDashboardCounts(dept);
@@ -53,23 +49,20 @@ export default function HodDashboard() {
         console.error(err);
       }
     };
-
     fetchCounts();
   }, [dept]);
 
-  // 🔥 FETCH FULL DATA
+  // ✅ FETCH FULL DEPT DATA — students & staff filtered by dept from backend
   useEffect(() => {
     if (!dept) return;
-
     const fetchDept = async () => {
       try {
         const res = await getDepartmentDetails(dept);
         setDeptData(res.data);
       } catch (err) {
-        console.error("❌ dept error", err);
+        console.error("dept error", err);
       }
     };
-
     fetchDept();
   }, [dept]);
 
@@ -77,6 +70,13 @@ export default function HodDashboard() {
     localStorage.removeItem("user");
     window.location.href = "/";
   };
+
+  // ✅ YEAR FILTER — fix: compare as String
+  const filteredStudents = deptData?.students?.filter((s) =>
+    selectedYear === "all" ? true : String(s.year) === String(selectedYear)
+  ) ?? [];
+
+  const filteredStaff = deptData?.staff ?? [];
 
   return (
     <div className="bg-light min-vh-100">
@@ -93,9 +93,7 @@ export default function HodDashboard() {
 
           {activeTab === "dashboard" && (
             <>
-              <h3 className="fw-bold mb-3">
-                {dept} Department Dashboard
-              </h3>
+              <h3 className="fw-bold mb-3">{dept} Department Dashboard</h3>
 
               {/* Banner */}
               <div className="card text-white bg-primary shadow-sm mb-4 rounded-4">
@@ -107,39 +105,42 @@ export default function HodDashboard() {
                 </div>
               </div>
 
-              {/* COUNTS */}
+              {/* STAT CARDS */}
               <div className="row g-4 mb-4">
                 <div className="col-md-4">
-                  <div className="card text-center p-4 rounded-4">
-                    <small>Students</small>
-                    <h2 className="text-primary">
+                  <div className="card text-center p-4 rounded-4 shadow-sm">
+                    <small className="text-muted">
+                      {dept} Students
+                    </small>
+                    <h2 className="text-primary fw-bold">
                       {counts.totalStudents}
                     </h2>
                   </div>
                 </div>
-
                 <div className="col-md-4">
-                  <div className="card text-center p-4 rounded-4">
-                    <small>Staff</small>
-                    <h2 className="text-success">
+                  <div className="card text-center p-4 rounded-4 shadow-sm">
+                    <small className="text-muted">
+                      {dept} Staff
+                    </small>
+                    <h2 className="text-success fw-bold">
                       {counts.totalStaff}
                     </h2>
                   </div>
                 </div>
-
                 <div className="col-md-4">
-                  <div className="card text-center p-4 rounded-4">
-                    <small>Attendance</small>
-                    <h2 className="text-danger">
+                  <div className="card text-center p-4 rounded-4 shadow-sm">
+                    <small className="text-muted">
+                      {dept} Attendance
+                    </small>
+                    <h2 className="text-danger fw-bold">
                       {counts.attendancePercent}%
                     </h2>
                   </div>
                 </div>
               </div>
 
-              {/* 🔥 Attendance + Reports (KEEP SAME) */}
+              {/* Quick Links */}
               <div className="row g-4 mb-4">
-
                 <div className="col-md-6">
                   <div className="card shadow-sm p-4 rounded-4">
                     <h5>📘 Attendance</h5>
@@ -154,7 +155,6 @@ export default function HodDashboard() {
                     </button>
                   </div>
                 </div>
-
                 <div className="col-md-6">
                   <div className="card shadow-sm p-4 rounded-4">
                     <h5>📊 Reports</h5>
@@ -169,10 +169,9 @@ export default function HodDashboard() {
                     </button>
                   </div>
                 </div>
-
               </div>
 
-              {/* 🔥 YEAR FILTER */}
+              {/* YEAR FILTER */}
               <div className="mb-3">
                 {["all", "1", "2", "3", "4"].map((y) => (
                   <button
@@ -188,49 +187,71 @@ export default function HodDashboard() {
                 ))}
               </div>
 
-              <div className="row">
+              <div className="row g-4">
 
-                {/* STUDENTS */}
+                {/* STUDENTS — dept-filtered + year-filtered */}
                 <div className="col-md-6">
                   <div className="card p-3 shadow-sm rounded-4">
-                    <h6 className="fw-bold mb-3">Students</h6>
-
-                    <div style={{ maxHeight: "250px", overflowY: "auto" }}>
-                      <ul className="list-group">
-                        {deptData?.students
-                          ?.filter(
-                            (s) =>
-                              selectedYear === "all" ||
-                              s.year === selectedYear
-                          )
-                          ?.map((s, i) => (
+                    <h6 className="fw-bold mb-1">
+                      Students
+                      <span className="badge bg-primary ms-2">
+                        {filteredStudents.length}
+                      </span>
+                    </h6>
+                    <small className="text-muted mb-3 d-block">
+                      {dept} Department
+                    </small>
+                    <div style={{ maxHeight: "280px", overflowY: "auto" }}>
+                      {filteredStudents.length === 0 ? (
+                        <p className="text-muted text-center small mt-3">
+                          No students found
+                        </p>
+                      ) : (
+                        <ul className="list-group list-group-flush">
+                          {filteredStudents.map((s, i) => (
                             <li
                               key={i}
-                              className="list-group-item d-flex justify-content-between"
+                              className="list-group-item d-flex justify-content-between align-items-center px-0"
                             >
-                              {s.name}
-                              <span className="badge bg-primary">
+                              <span className="small">{s.name}</span>
+                              <span className="badge bg-primary rounded-pill">
                                 Y{s.year}
                               </span>
                             </li>
                           ))}
-                      </ul>
+                        </ul>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* STAFF */}
+                {/* STAFF — dept-filtered */}
                 <div className="col-md-6">
                   <div className="card p-3 shadow-sm rounded-4">
-                    <h6 className="fw-bold mb-3">Staff</h6>
-
-                    <ul className="list-group">
-                      {deptData?.staff?.map((s, i) => (
-                        <li key={i} className="list-group-item">
-                          {s.name}
-                        </li>
-                      ))}
-                    </ul>
+                    <h6 className="fw-bold mb-1">
+                      Staff
+                      <span className="badge bg-success ms-2">
+                        {filteredStaff.length}
+                      </span>
+                    </h6>
+                    <small className="text-muted mb-3 d-block">
+                      {dept} Department
+                    </small>
+                    <div style={{ maxHeight: "280px", overflowY: "auto" }}>
+                      {filteredStaff.length === 0 ? (
+                        <p className="text-muted text-center small mt-3">
+                          No staff found
+                        </p>
+                      ) : (
+                        <ul className="list-group list-group-flush">
+                          {filteredStaff.map((s, i) => (
+                            <li key={i} className="list-group-item px-0 small">
+                              {s.name}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -241,15 +262,13 @@ export default function HodDashboard() {
           {activeTab === "students" && (
             <ManageStudents restrictedDept={dept} />
           )}
-
           {activeTab === "staffs" && (
             <ManageStaffs restrictedDept={dept} />
           )}
-
           {activeTab === "attendance" && (
+            // ✅ dept pass பண்றோம் — AttendancePage-ல் department auto-fill ஆகும்
             <AttendancePage restrictedDept={dept} />
           )}
-
           {activeTab === "reports" && (
             <Reports restrictedDept={dept} />
           )}

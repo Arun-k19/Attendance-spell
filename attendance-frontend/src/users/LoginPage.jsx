@@ -86,7 +86,7 @@ function LoginPage() {
     } catch (err) {
       console.error("❌ Login error:", err);
       setLoading(false);
-      setToastMsg("Invalid credentials!");
+      setToastMsg("User is nor Heree!");
     }
 
     setTimeout(() => setToastMsg(""), 3000);
