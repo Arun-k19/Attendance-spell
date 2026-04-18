@@ -119,4 +119,49 @@ router.get("/users/:role", async (req, res) => {
   }
 });
 
+// ================= DELETE USER =================
+router.delete("/users/:username", async (req, res) => {
+  try {
+    const { username } = req.params;
+
+    const deleted = await User.findOneAndDelete({
+      username: { $regex: new RegExp(`^${username}$`, "i") }
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    res.json({ msg: "User deleted successfully" });
+
+  } catch (err) {
+    console.error("❌ Delete Error:", err);
+    res.status(500).json({ msg: "Delete failed" });
+  }
+});
+
+// ================= UPDATE USER =================
+router.put("/users/:username", async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { newUsername } = req.body;
+
+    const updated = await User.findOneAndUpdate(
+      { username: { $regex: new RegExp(`^${username}$`, "i") } },
+      { username: newUsername.trim() },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    res.json({ msg: "User updated successfully", user: updated });
+
+  } catch (err) {
+    console.error("❌ Update Error:", err);
+    res.status(500).json({ msg: "Update failed" });
+  }
+});
+
 export default router;

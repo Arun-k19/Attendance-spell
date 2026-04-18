@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import axios from "axios";
+import React, { useState, useEffect } from "react";
 
 const ROLE_CONFIG = {
   HOD:   { color: "#dc2626", bg: "#fee2e2", emoji: "👑" },
   Staff: { color: "#2563eb", bg: "#eff6ff", emoji: "👨‍🏫" },
+  Admin: { color: "#16a34a", bg: "#dcfce7", emoji: "🛡️" },
 };
 
 export default function ManageUsers() {
@@ -13,11 +15,7 @@ export default function ManageUsers() {
     { name: "Kumar", role: "Staff" },
   ];
 
-  const [users, setUsers] = useState([
-    { id: 1, name: "Madhuraa", role: "HOD", username: "hod1", password: "1234", active: true },
-    { id: 2, name: "Arun", role: "Staff", username: "staff1", password: "1234", active: true },
-  ]);
-
+  const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState(null);
 
@@ -34,13 +32,39 @@ export default function ManageUsers() {
 
   const [editData, setEditData] = useState({});
 
-  // ✅ FILTER (FIXED)
+  // ✅ FETCH USERS FROM BACKEND
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const res = await axios.get(
+          "https://attendance-spell-management.onrender.com/api/auth/users"
+        );
+
+        const formatted = res.data.map((u, index) => ({
+          id: index + 1,
+          name: u.username,
+          username: u.username,
+          role: u.role,
+          active: true
+        }));
+
+        setUsers(formatted);
+
+      } catch (err) {
+        console.error("Error fetching users:", err);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  // ✅ FILTER
   const filteredUsers = users.filter((u) =>
     u.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  // ✅ ADD USER
-  const handleAdd = () => {
+  // ✅ ADD USER (BACKEND CONNECTED)
+  const handleAdd = async () => {
     const isValid = validCollegeUsers.find(
       (u) =>
         u.name.toLowerCase() === newUser.name.toLowerCase() &&
@@ -53,21 +77,69 @@ export default function ManageUsers() {
       return alert("Fill all fields");
     }
 
-    setUsers([
-      ...users,
-      { id: Date.now(), ...newUser, active: true }
-    ]);
+    try {
+      const res = await axios.post(
+        "https://attendance-spell-management.onrender.com/api/auth/register",
+        {
+          username: newUser.username,
+          password: newUser.password,
+          role: newUser.role,
+          department: "CSE"
+        }
+      );
 
-    alert("✅ User created successfully");
+      alert(res.data.msg);
 
-    setShowAddModal(false);
-    setNewUser({ name: "", role: "Staff", username: "", password: "" });
+      // refresh list
+      const updated = await axios.get(
+        "https://attendance-spell-management.onrender.com/api/auth/users"
+      );
+
+      const formatted = updated.data.map((u, index) => ({
+        id: index + 1,
+        name: u.username,
+        username: u.username,
+        role: u.role,
+        active: true
+      }));
+
+      setUsers(formatted);
+
+      setShowAddModal(false);
+      setNewUser({ name: "", role: "Staff", username: "", password: "" });
+
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.msg || "Error adding user");
+    }
   };
 
-  // ✅ DELETE
-  const handleDelete = (id) => {
-    setUsers(users.filter((u) => u.id !== id));
-    setShowViewModal(false);
+  // ✅ DELETE (UI மட்டும்)
+  const handleDelete = async (username) => {
+    try {
+      await axios.delete(
+        `https://attendance-spell-management.onrender.com/api/auth/users/${username}`
+      );
+
+      const res = await axios.get(
+        "https://attendance-spell-management.onrender.com/api/auth/users"
+      );
+
+      const formatted = res.data.map((u, index) => ({
+        id: index + 1,
+        name: u.username,
+        username: u.username,
+        role: u.role,
+        active: true
+      }));
+
+      setUsers(formatted);
+      setShowViewModal(false);
+
+    } catch (err) {
+      console.error(err);
+      alert("Delete failed");
+    }
   };
 
   // ✅ TOGGLE ACTIVE
@@ -78,11 +150,34 @@ export default function ManageUsers() {
   };
 
   // ✅ UPDATE
-  const handleUpdate = () => {
-    setUsers(users.map((u) =>
-      u.id === editData.id ? editData : u
-    ));
-    setShowEditModal(false);
+  const handleUpdate = async () => {
+    try {
+      await axios.put(
+        `https://attendance-spell-management.onrender.com/api/auth/users/${editData.username}`,
+        {
+          newUsername: editData.name
+        }
+      );
+
+      const res = await axios.get(
+        "https://attendance-spell-management.onrender.com/api/auth/users"
+      );
+
+      const formatted = res.data.map((u, index) => ({
+        id: index + 1,
+        name: u.username,
+        username: u.username,
+        role: u.role,
+        active: true
+      }));
+
+      setUsers(formatted);
+      setShowEditModal(false);
+
+    } catch (err) {
+      console.error(err);
+      alert("Update failed");
+    }
   };
 
   return (
@@ -118,7 +213,12 @@ export default function ManageUsers() {
       ) : (
         <div className="row">
           {filteredUsers.map((u) => {
-            const cfg = ROLE_CONFIG[u.role];
+            const cfg = ROLE_CONFIG[u.role] || {
+              color: "#6b7280",
+              bg: "#f3f4f6",
+              emoji: "👤"
+            };
+
             return (
               <div className="col-md-3 mb-3" key={u.id}>
                 <div
