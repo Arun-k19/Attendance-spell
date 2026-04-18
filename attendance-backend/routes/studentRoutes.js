@@ -7,31 +7,33 @@ import Student from "../models/Student.js";
 const router = express.Router();
 
 /* =============================
-   📦 MULTER File Upload Setup
+   📦 MULTER Setup
 ============================= */
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "uploads/"),
-  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
+  filename: (req, file, cb) =>
+    cb(null, Date.now() + "-" + file.originalname),
 });
 const upload = multer({ storage });
 
 /* =============================
-   📥 CSV UPLOAD (with Auto Mapping)
+   📥 CSV UPLOAD (FIXED 🔥)
 ============================= */
 router.post("/upload", upload.single("file"), async (req, res) => {
   try {
-    const { dept, year } = req.body;
-    if (!req.file) return res.status(400).json({ msg: "❌ No file uploaded" });
+    if (!req.file) {
+      return res.status(400).json({ msg: "❌ No file uploaded" });
+    }
 
     const filePath = req.file.path;
     const jsonArray = await csv().fromFile(filePath);
 
-    if (!jsonArray || jsonArray.length === 0) {
+    if (!jsonArray.length) {
       fs.unlinkSync(filePath);
-      return res.status(400).json({ msg: "❌ Empty or invalid CSV file" });
+      return res.status(400).json({ msg: "❌ Empty CSV file" });
     }
 
-    // Normalize headers (case-insensitive)
+    // 🔥 normalize headers
     const normalize = (obj) => {
       const newObj = {};
       for (let key in obj) {
@@ -40,30 +42,25 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       return newObj;
     };
 
-    // Auto map flexible CSV headers
+    // 🔥 map data safely
     const formattedData = jsonArray.map((row) => {
       const data = normalize(row);
+
       return {
         regNo:
           data["regno"] ||
           data["reg no"] ||
           data["register no"] ||
-          data["student id"] ||
           data["id"] ||
           "",
-        name: data["name"] || data["student name"] || data["full name"] || "",
-        dept:
-          dept ||
-          data["dept"] ||
-          data["department"] ||
-          data["department name"] ||
-          "",
-        year: year || data["year"] || data["batch year"] || "",
+        name: data["name"] || "",
+        dept: (data["dept"] || data["department"] || "").toUpperCase(),
+        year: data["year"] || "",
         attendance: Number(data["attendance"] || 0),
       };
     });
 
-    // Validate records
+    // 🔥 filter valid
     const validStudents = formattedData.filter(
       (s) => s.regNo && s.name && s.dept && s.year
     );
@@ -71,120 +68,89 @@ router.post("/upload", upload.single("file"), async (req, res) => {
     if (!validStudents.length) {
       fs.unlinkSync(filePath);
       return res.status(400).json({
-        msg: "❌ Invalid CSV format. Required headers: regNo, name, dept, year, attendance",
+        msg: "❌ CSV format wrong (need regNo, name, dept, year)",
       });
     }
 
-    await Student.insertMany(validStudents);
+    // 🔥 insert (ignore duplicates safely)
+    await Student.insertMany(validStudents, { ordered: false });
+
     fs.unlinkSync(filePath);
 
     res.json({
-      msg: `✅ ${validStudents.length} students uploaded successfully!`,
+      msg: `✅ ${validStudents.length} students uploaded successfully`,
       count: validStudents.length,
-      data: validStudents,
     });
+
   } catch (err) {
     console.error("❌ CSV Upload Error:", err);
-    res.status(500).json({ msg: "CSV upload failed", error: err.message });
+
+    // 🔥 DUPLICATE ERROR HANDLE (NEW)
+    if (err.code === 11000) {
+      return res.status(400).json({
+        msg: "⚠️ Some students already exist (duplicate regNo)"
+      });
+    }
+
+    res.status(500).json({
+      msg: "Upload failed",
+      error: err.message,
+    });
   }
 });
 
 /* =============================
-   📚 GET Students (Filter by Dept/Year)
+   GET STUDENTS
 ============================= */
 router.get("/", async (req, res) => {
   try {
-    const { dept, year } = req.query;
-    const query = {};
-
-    if (dept) query.dept = dept;
-    if (year) query.year = year;
-
-    const students = await Student.find(query).sort({ regNo: 1 });
-
+    const students = await Student.find().sort({ regNo: 1 });
     res.json(students);
-  } catch (err) {
-    res.status(500).json({ msg: "Failed to fetch students" });
+  } catch {
+    res.status(500).json({ msg: "Fetch failed" });
   }
 });
 
 /* =============================
-   🔍 SEARCH Students (by name/regNo/dept/year)
-============================= */
-router.get("/search", async (req, res) => {
-  try {
-    const { q } = req.query;
-    if (!q) return res.json([]);
-
-    const regex = new RegExp(q, "i");
-    const students = await Student.find({
-      $or: [
-        { name: regex },
-        { regNo: regex },
-        { dept: regex },
-        { year: regex },
-      ],
-    }).sort({ name: 1 });
-
-    res.json(students);
-  } catch (err) {
-    res.status(500).json({ msg: "Search failed" });
-  }
-});
-
-/* =============================
-   ➕ ADD Student (Manual)
+   ADD STUDENT
 ============================= */
 router.post("/add", async (req, res) => {
   try {
-    const { regNo, name, dept, year, attendance } = req.body;
-    if (!regNo || !name || !dept || !year)
+    const { regNo, name, dept, year } = req.body;
+
+    if (!regNo || !name || !dept || !year) {
       return res.status(400).json({ msg: "All fields required" });
+    }
 
     const exist = await Student.findOne({ regNo });
-    if (exist) return res.status(400).json({ msg: "Student already exists" });
+    if (exist) {
+      return res.status(400).json({ msg: "Student exists" });
+    }
 
     const student = new Student({
       regNo,
       name,
       dept,
       year,
-      attendance: attendance || 0,
     });
+
     await student.save();
-    res.json({ msg: "✅ Student added successfully", student });
-  } catch (err) {
-    res.status(500).json({ msg: "Failed to add student" });
+
+    res.json({ msg: "Student added", student });
+
+  } catch {
+    res.status(500).json({ msg: "Add failed" });
   }
 });
 
 /* =============================
-   ✏️ UPDATE Student
-============================= */
-router.put("/:regNo", async (req, res) => {
-  try {
-    const { regNo } = req.params;
-    const update = req.body;
-    const updated = await Student.findOneAndUpdate({ regNo }, update, {
-      new: true,
-    });
-    if (!updated) return res.status(404).json({ msg: "Student not found" });
-    res.json({ msg: "✅ Updated successfully", updated });
-  } catch (err) {
-    res.status(500).json({ msg: "Failed to update student" });
-  }
-});
-
-/* =============================
-   🗑️ DELETE Student
+   DELETE
 ============================= */
 router.delete("/:regNo", async (req, res) => {
   try {
-    const { regNo } = req.params;
-    const deleted = await Student.findOneAndDelete({ regNo });
-    if (!deleted) return res.status(404).json({ msg: "Student not found" });
-    res.json({ msg: "🗑️ Deleted successfully" });
-  } catch (err) {
+    await Student.findOneAndDelete({ regNo: req.params.regNo });
+    res.json({ msg: "Deleted" });
+  } catch {
     res.status(500).json({ msg: "Delete failed" });
   }
 });

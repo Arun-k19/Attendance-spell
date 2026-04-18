@@ -94,11 +94,22 @@ export default function ManageStudents() {
   };
   const handleUpload = async () => {
     if (!stuFile) return alert("Select a CSV file!");
+
     const fd = new FormData();
     fd.append("file", stuFile);
-    await axios.post(`${API}/upload`, fd);
-    alert("Uploaded!");
-    fetchStudents();
+
+    // 🔥 முக்கியம்
+    fd.append("dept", selectedDept || "");
+    fd.append("year", selectedYear !== "all" ? selectedYear : "");
+
+    try {
+      const res = await axios.post(`${API}/upload`, fd);
+      alert(res.data.msg || "Uploaded!");
+      fetchStudents();
+    } catch (err) {
+      console.error("Upload Error:", err.response?.data);
+      alert(err.response?.data?.msg || "Upload failed");
+    }
   };
 
   // ── CRUD ────────────────────────────────────────────────
