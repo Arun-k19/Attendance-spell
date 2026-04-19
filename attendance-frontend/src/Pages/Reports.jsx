@@ -24,8 +24,79 @@ const HOLIDAYS = [
   { date: "2025-12-25", name: "Christmas" },
 ];
 const HOLIDAY_MAP = Object.fromEntries(HOLIDAYS.map(h => [h.date, h.name]));
-const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+const DEPT_CONFIG = {
+  CSE:   { emoji: "💻", color: "#2563eb" },
+  ECE:   { emoji: "📡", color: "#0891b2" },
+  EEE:   { emoji: "⚡", color: "#dc2626" },
+  IT:    { emoji: "🖥️", color: "#7c3aed" },
+  MECH:  { emoji: "⚙️", color: "#b45309" },
+  CIVIL: { emoji: "🏗️", color: "#15803d" },
+};
+const ALL_DEPTS = ["CSE", "ECE", "EEE", "MECH", "CIVIL"];
+const YEAR_LABELS = { "1": "I Year", "2": "II Year", "3": "III Year", "4": "IV Year" };
+
+// ─── ROLE DETECTION ─────────────────────────────────────────────────
+/**
+ * Returns:
+ *   Admin  → { role:"admin",  allowedDepts: ALL, allowedYearsByDept: null }
+ *   HOD    → { role:"hod",    allowedDepts: [hodDept], allowedYearsByDept: null }
+ *   Staff  → { role:"staff",  allowedDepts: [...], allowedYearsByDept: { CSE:["1","3"] } }
+ */
+const getRoleInfo = () => {
+  const userData  = JSON.parse(localStorage.getItem("user")      || "{}");
+  const hodData   = JSON.parse(localStorage.getItem("hodData")   || "{}");
+  const staffData = JSON.parse(localStorage.getItem("staffData") || "{}");
+
+  const role = (userData?.role || "").toLowerCase();
+
+  if (role === "admin") {
+    return { role: "admin", allowedDepts: ALL_DEPTS, allowedYearsByDept: null };
+  }
+
+  if (role === "hod") {
+    const dept = hodData?.department || userData?.department || "";
+    return {
+      role: "hod",
+      allowedDepts: dept ? [dept] : ALL_DEPTS,
+      allowedYearsByDept: null,
+    };
+  }
+
+  // Staff / Faculty
+  const subjects    = staffData?.subjects || userData?.subjects || [];
+  const primaryDept = staffData?.department || userData?.department || "";
+
+  if (!subjects.length) {
+    return {
+      role: "staff",
+      allowedDepts: primaryDept ? [primaryDept] : [],
+      allowedYearsByDept: primaryDept ? { [primaryDept]: ["1","2","3","4"] } : {},
+    };
+  }
+
+  // Build dept → Set<year> from subjects array
+  const map = {};
+  subjects.forEach(({ year, department }) => {
+    if (!year) return;
+    const dept = department || primaryDept;
+    if (!dept) return;
+    if (!map[dept]) map[dept] = new Set();
+    map[dept].add(String(year));
+  });
+
+  const allowedYearsByDept = {};
+  Object.entries(map).forEach(([d, ySet]) => {
+    allowedYearsByDept[d] = Array.from(ySet).sort();
+  });
+
+  return {
+    role: "staff",
+    allowedDepts: Object.keys(allowedYearsByDept),
+    allowedYearsByDept,
+  };
+};
 
 // ─── CALENDAR POPOVER ───────────────────────────────────────────────
 const CalendarPopover = ({ label, value, onChange, fromDate, toDate }) => {
@@ -104,21 +175,18 @@ const CalendarPopover = ({ label, value, onChange, fromDate, toDate }) => {
           borderRadius: 12, boxShadow: "0 12px 40px rgba(0,0,0,0.15)",
           padding: 14, width: 260, animation: "calPop 0.15s ease"
         }}>
-          {/* Nav */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <button onClick={prevMonth} style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: 6, width: 26, height: 26, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", color: "#475569" }}>‹</button>
             <span style={{ fontWeight: 700, fontSize: 13, color: "#1e3a5f" }}>{MONTH_SHORT[calMonth]} {calYear}</span>
             <button onClick={nextMonth} style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: 6, width: 26, height: 26, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", color: "#475569" }}>›</button>
           </div>
 
-          {/* Day headers */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2, marginBottom: 4 }}>
             {["Su","Mo","Tu","We","Th","Fr","Sa"].map(d => (
               <div key={d} style={{ textAlign: "center", fontSize: 10, fontWeight: 600, color: "#94a3b8", padding: "2px 0" }}>{d}</div>
             ))}
           </div>
 
-          {/* Days grid */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2 }}>
             {cells.map((day, i) => {
               if (!day) return <div key={i} />;
@@ -149,7 +217,7 @@ const CalendarPopover = ({ label, value, onChange, fromDate, toDate }) => {
                     textAlign: "center", borderRadius: 5, padding: "4px 0",
                     background: bg, color, fontWeight: fw, fontSize: 11,
                     cursor, transition: "background 0.1s",
-                    outline: isToday ? `2px solid #94a3b8` : "none",
+                    outline: isToday ? "2px solid #94a3b8" : "none",
                     outlineOffset: "-1px",
                   }}
                 >
@@ -159,7 +227,6 @@ const CalendarPopover = ({ label, value, onChange, fromDate, toDate }) => {
             })}
           </div>
 
-          {/* This month holidays */}
           {thisMonthHolidays.length > 0 && (
             <div style={{ marginTop: 10, borderTop: "1px solid #f1f5f9", paddingTop: 8 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", marginBottom: 5, letterSpacing: "0.5px" }}>HOLIDAYS THIS MONTH</div>
@@ -172,7 +239,6 @@ const CalendarPopover = ({ label, value, onChange, fromDate, toDate }) => {
             </div>
           )}
 
-          {/* Legend */}
           <div style={{ display: "flex", gap: 10, marginTop: 8, borderTop: "1px solid #f1f5f9", paddingTop: 8, flexWrap: "wrap" }}>
             {[
               { bg: "#fee2e2", border: "#dc2626", label: "Holiday" },
@@ -248,7 +314,6 @@ const StudentModal = ({ student, onClose, department, year }) => {
           animation: "slideUp 0.25s ease"
         }}
       >
-        {/* Header */}
         <div style={{
           background: "linear-gradient(135deg,#1e3a5f,#2563eb)",
           borderRadius: "16px 16px 0 0", padding: "20px 24px", color: "#fff"
@@ -291,7 +356,6 @@ const StudentModal = ({ student, onClose, department, year }) => {
           </div>
         </div>
 
-        {/* Body */}
         <div style={{ padding: 24 }}>
           <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
             {[
@@ -344,7 +408,6 @@ const StudentModal = ({ student, onClose, department, year }) => {
                 </BarChart>
               </ResponsiveContainer>
 
-              {/* 75% line label */}
               <div style={{ textAlign: "right", fontSize: 11, color: "#94a3b8", marginTop: -4, marginBottom: 12 }}>
                 — 75% minimum required
               </div>
@@ -391,22 +454,43 @@ const StudentModal = ({ student, onClose, department, year }) => {
 
 // ─── MAIN REPORTS PAGE ───────────────────────────────────────────────
 const Reports = () => {
-  const [department,   setDepartment]   = useState("");
-  const [year,         setYear]         = useState("");
-  const [fromDate,     setFromDate]     = useState("");
-  const [toDate,       setToDate]       = useState("");
-  const [showReport,   setShowReport]   = useState(false);
-  const [report,       setReport]       = useState([]);
-  const [workingDays,  setWorkingDays]  = useState(null);
-  const [showToast,    setShowToast]    = useState(null);
-  const [search,       setSearch]       = useState("");
-  const [showDefaulters, setShowDefaulters] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [loading,      setLoading]      = useState(false);
+  // ── Role info ─────────────────────────────────────────────
+  const roleInfo = getRoleInfo();
+
+  // ── State ─────────────────────────────────────────────────
+  const [department, setDepartment] = useState(() =>
+    roleInfo.allowedDepts.length === 1 ? roleInfo.allowedDepts[0] : ""
+  );
+  const [year,             setYear]             = useState("");
+  const [fromDate,         setFromDate]         = useState("");
+  const [toDate,           setToDate]           = useState("");
+  const [showReport,       setShowReport]       = useState(false);
+  const [report,           setReport]           = useState([]);
+  const [workingDays,      setWorkingDays]       = useState(null);
+  const [showToast,        setShowToast]        = useState(null);
+  const [search,           setSearch]           = useState("");
+  const [showDefaulters,   setShowDefaulters]   = useState(false);
+  const [selectedStudent,  setSelectedStudent]  = useState(null);
+  const [loading,          setLoading]          = useState(false);
 
   useEffect(() => {
     setToDate(new Date().toISOString().split("T")[0]);
   }, []);
+
+  // Auto-select year if only one allowed for chosen dept
+  useEffect(() => {
+    if (!department) { setYear(""); return; }
+    const years = getAllowedYears(department);
+    if (years.length === 1) setYear(years[0]);
+    else setYear("");
+    setShowReport(false);
+    setReport([]);
+  }, [department]);
+
+  const getAllowedYears = (dept) => {
+    if (!roleInfo.allowedYearsByDept) return ["1","2","3","4"];
+    return roleInfo.allowedYearsByDept[dept] || [];
+  };
 
   const showAlert = useCallback((msg, type = "info") => {
     setShowToast({ msg, type });
@@ -415,9 +499,9 @@ const Reports = () => {
 
   const handleSmartDate = useCallback((type, value) => {
     const dateObj = new Date(value);
-    if (dateObj > new Date())       { showAlert("Future date not allowed", "danger"); return; }
-    if (dateObj.getDay() === 0)     { showAlert("Sunday is a holiday", "danger"); return; }
-    if (HOLIDAY_MAP[value])         { showAlert(`${HOLIDAY_MAP[value]} — Holiday`, "warning"); return; }
+    if (dateObj > new Date())     { showAlert("Future date not allowed", "danger"); return; }
+    if (dateObj.getDay() === 0)   { showAlert("Sunday is a holiday", "danger"); return; }
+    if (HOLIDAY_MAP[value])       { showAlert(`${HOLIDAY_MAP[value]} — Holiday`, "warning"); return; }
     type === "from" ? setFromDate(value) : setToDate(value);
   }, [showAlert]);
 
@@ -577,26 +661,54 @@ const Reports = () => {
     success: { bg: "#dcfce7", color: "#14532d", border: "#86efac" },
   };
 
+  const deptCfg = DEPT_CONFIG[department] || { emoji: "🏫", color: "#2563eb" };
+  const allowedYears = getAllowedYears(department);
+
+  // ── Role badge ────────────────────────────────────────────
+  const RoleBadge = () => {
+    if (roleInfo.role === "admin") return (
+      <span style={{ background: "#1e3a8a", color: "#fff", borderRadius: 20, padding: "4px 12px", fontSize: 11, fontWeight: 600 }}>
+        🛡 Admin — All Departments
+      </span>
+    );
+    if (roleInfo.role === "hod") return (
+      <span style={{ background: deptCfg.color, color: "#fff", borderRadius: 20, padding: "4px 12px", fontSize: 11, fontWeight: 600 }}>
+        {deptCfg.emoji} HOD — {roleInfo.allowedDepts[0]}
+      </span>
+    );
+    return (
+      <span style={{ background: "#7c3aed", color: "#fff", borderRadius: 20, padding: "4px 12px", fontSize: 11, fontWeight: 600 }}>
+        👤 Staff — {roleInfo.allowedDepts.join(", ")}
+      </span>
+    );
+  };
+
   return (
     <div style={{ maxWidth: 1000, margin: "0 auto", padding: "16px 12px", fontFamily: "system-ui,sans-serif" }}>
 
       <style>{`
-        @keyframes slideUp   { from { transform:translateY(20px);opacity:0 } to { transform:translateY(0);opacity:1 } }
-        @keyframes calPop    { from { transform:translateY(-8px);opacity:0 } to { transform:translateY(0);opacity:1 } }
-        .stu-card            { cursor:pointer;transition:all 0.18s;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;background:#fff;display:flex;justify-content:space-between;align-items:center; }
-        .stu-card:hover      { border-color:#2563eb;box-shadow:0 4px 16px rgba(37,99,235,0.12);transform:translateY(-1px); }
-        .act-btn             { border:none;border-radius:8px;padding:0 16px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.15s;height:36px; }
-        .act-btn:hover       { opacity:0.88;transform:translateY(-1px); }
-        .act-btn:disabled    { opacity:0.5;cursor:not-allowed;transform:none; }
+        @keyframes slideUp { from { transform:translateY(20px);opacity:0 } to { transform:translateY(0);opacity:1 } }
+        @keyframes calPop  { from { transform:translateY(-8px);opacity:0 } to { transform:translateY(0);opacity:1 } }
+        .stu-card          { cursor:pointer;transition:all 0.18s;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;background:#fff;display:flex;justify-content:space-between;align-items:center; }
+        .stu-card:hover    { border-color:#2563eb;box-shadow:0 4px 16px rgba(37,99,235,0.12);transform:translateY(-1px); }
+        .act-btn           { border:none;border-radius:8px;padding:0 16px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.15s;height:36px; }
+        .act-btn:hover     { opacity:0.88;transform:translateY(-1px); }
+        .act-btn:disabled  { opacity:0.5;cursor:not-allowed;transform:none; }
+        .readonly-pill     { height:38px;display:flex;align-items:center;padding:0 12px;border-radius:8px;background:#f1f5f9;font-weight:700;font-size:13px;gap:6px;border:1px solid #e2e8f0; }
       `}</style>
 
       {/* Title */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
         <div style={{ background: "#1e3a5f", borderRadius: 10, padding: "8px 12px", fontSize: 18 }}>📊</div>
         <div>
           <h3 style={{ margin: 0, color: "#1e3a5f", fontWeight: 700, fontSize: 21 }}>Attendance Reports</h3>
           <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 1 }}>Generate and export department-wise attendance reports</div>
         </div>
+      </div>
+
+      {/* Role badge */}
+      <div style={{ marginBottom: 16 }}>
+        <RoleBadge />
       </div>
 
       {/* Toast */}
@@ -626,33 +738,55 @@ const Reports = () => {
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 12, alignItems: "end" }}>
 
-          {/* Department */}
+          {/* ── DEPARTMENT ── */}
           <div>
             <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", marginBottom: 4, letterSpacing: "0.5px" }}>DEPARTMENT</div>
-            <select
-              value={department}
-              onChange={e => setDepartment(e.target.value)}
-              style={{ height: 38, width: "100%", border: "1px solid #cbd5e1", borderRadius: 8, padding: "0 10px", fontSize: 13, background: "#f8fafc", color: "#1e293b" }}
-            >
-              <option value="">Select dept</option>
-              {["CSE","ECE","EEE","MECH","CIVIL"].map(d => <option key={d}>{d}</option>)}
-            </select>
+
+            {/* Admin / HOD with multiple depts → dropdown */}
+            {roleInfo.allowedDepts.length > 1 ? (
+              <select
+                value={department}
+                onChange={e => { setDepartment(e.target.value); setShowReport(false); setReport([]); }}
+                style={{ height: 38, width: "100%", border: "1px solid #cbd5e1", borderRadius: 8, padding: "0 10px", fontSize: 13, background: "#f8fafc", color: "#1e293b" }}
+              >
+                <option value="">Select dept</option>
+                {roleInfo.allowedDepts.map(d => (
+                  <option key={d} value={d}>{DEPT_CONFIG[d]?.emoji} {d}</option>
+                ))}
+              </select>
+            ) : (
+              /* HOD (single dept) or Staff (single dept) → read-only pill */
+              <div className="readonly-pill" style={{ color: deptCfg.color }}>
+                {deptCfg.emoji} {department || "—"}
+              </div>
+            )}
           </div>
 
-          {/* Year */}
+          {/* ── YEAR ── */}
           <div>
             <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", marginBottom: 4, letterSpacing: "0.5px" }}>YEAR</div>
-            <select
-              value={year}
-              onChange={e => setYear(e.target.value)}
-              style={{ height: 38, width: "100%", border: "1px solid #cbd5e1", borderRadius: 8, padding: "0 10px", fontSize: 13, background: "#f8fafc", color: "#1e293b" }}
-            >
-              <option value="">Select year</option>
-              {["1","2","3","4"].map(y => <option key={y} value={y}>{y}st Year</option>)}
-            </select>
+
+            {allowedYears.length === 1 ? (
+              /* Staff assigned to only 1 year for this dept → read-only */
+              <div className="readonly-pill" style={{ color: "#2563eb" }}>
+                {YEAR_LABELS[allowedYears[0]]}
+              </div>
+            ) : (
+              <select
+                value={year}
+                onChange={e => { setYear(e.target.value); setShowReport(false); setReport([]); }}
+                disabled={!department}
+                style={{ height: 38, width: "100%", border: "1px solid #cbd5e1", borderRadius: 8, padding: "0 10px", fontSize: 13, background: !department ? "#f1f5f9" : "#f8fafc", color: "#1e293b" }}
+              >
+                <option value="">Select year</option>
+                {allowedYears.map(y => (
+                  <option key={y} value={y}>{YEAR_LABELS[y]}</option>
+                ))}
+              </select>
+            )}
           </div>
 
-          {/* From Date — Popover */}
+          {/* From Date */}
           <CalendarPopover
             label="FROM DATE"
             value={fromDate}
@@ -661,7 +795,7 @@ const Reports = () => {
             toDate={toDate}
           />
 
-          {/* To Date — Popover */}
+          {/* To Date */}
           <CalendarPopover
             label="TO DATE"
             value={toDate}
@@ -714,10 +848,10 @@ const Reports = () => {
           {/* Summary Stats */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 10, marginBottom: 16 }}>
             {[
-              { label: "Total Students",    val: report.length,     color: "#2563eb", bg: "#eff6ff" },
-              { label: "Class Average",     val: classAvg + "%",    color: "#16a34a", bg: "#f0fdf4" },
-              { label: "Defaulters < 75%",  val: defaulters.length, color: "#dc2626", bg: "#fef2f2" },
-              { label: "Working Days",      val: workingDays || "-",color: "#d97706", bg: "#fffbeb" },
+              { label: "Total Students",   val: report.length,     color: "#2563eb", bg: "#eff6ff" },
+              { label: "Class Average",    val: classAvg + "%",    color: "#16a34a", bg: "#f0fdf4" },
+              { label: "Defaulters < 75%", val: defaulters.length, color: "#dc2626", bg: "#fef2f2" },
+              { label: "Working Days",     val: workingDays || "-",color: "#d97706", bg: "#fffbeb" },
             ].map(s => (
               <div key={s.label} style={{
                 background: s.bg, borderRadius: 10, padding: "12px 16px",
@@ -751,25 +885,13 @@ const Reports = () => {
             >
               {showDefaulters ? "Show All" : `⚠ Defaulters (${defaulters.length})`}
             </button>
-            <button
-              className="act-btn"
-              onClick={exportPDF}
-              style={{ background: "#dc2626", color: "#fff" }}
-            >
-              📄 PDF
-            </button>
-            <button
-              className="act-btn"
-              onClick={exportExcel}
-              style={{ background: "#16a34a", color: "#fff" }}
-            >
-              📊 Excel
-            </button>
+            <button className="act-btn" onClick={exportPDF}   style={{ background: "#dc2626", color: "#fff" }}>📄 PDF</button>
+            <button className="act-btn" onClick={exportExcel} style={{ background: "#16a34a", color: "#fff" }}>📊 Excel</button>
           </div>
 
           {/* Dept label */}
           <div style={{ fontWeight: 600, fontSize: 13, color: "#475569", marginBottom: 10 }}>
-            {department} Dept — Year {year} — {displayData.length} students
+            {DEPT_CONFIG[department]?.emoji} {department} Dept — {YEAR_LABELS[year]} — {displayData.length} students
           </div>
 
           {/* Student Cards */}
