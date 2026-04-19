@@ -20,7 +20,6 @@ const YEAR_OPTIONS    = ["1", "2", "3", "4"];
 const getInitials = (name = "") =>
   name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
-// ── Default empty subject now includes department field ──
 const emptySubject = (defaultDept = "") => ({ name: "", year: "", department: defaultDept });
 
 const emptyForm = (defaultDept = "") => ({
@@ -33,7 +32,6 @@ const emptyForm = (defaultDept = "") => ({
 
 export default function ManageStaffs() {
 
-  // ── Role detect ─────────────────────────────────────────
   const userData = JSON.parse(localStorage.getItem("user")    || "{}");
   const hodData  = JSON.parse(localStorage.getItem("hodData") || "{}");
   const userRole = userData?.role?.toLowerCase();
@@ -62,7 +60,6 @@ export default function ManageStaffs() {
     }
   };
 
-  // ── Filter ───────────────────────────────────────────────
   const filteredStaff = staffList.filter((s) => {
     const matchDept = selectedDept ? s.department === selectedDept : false;
     if (!searchTerm) return matchDept;
@@ -80,13 +77,12 @@ export default function ManageStaffs() {
     return selectedDept ? matchDept && matchSearch : matchSearch;
   });
 
-  // ── CRUD ─────────────────────────────────────────────────
+  // ── Save: clean subjects + ensure department saved ────────
   const handleSave = async () => {
     if (!formData.name || !formData.department || !formData.role) {
       alert("Please fill all required fields!");
       return;
     }
-    // Validate each subject has dept + year if name is filled
     const invalidSub = formData.subjects.find(
       (s) => s.name && (!s.department || !s.year)
     );
@@ -94,12 +90,24 @@ export default function ManageStaffs() {
       alert("Each subject must have a Department and Year selected!");
       return;
     }
+
+    // ✅ KEY FIX: clean & explicitly include department per subject
+    const cleanedSubjects = formData.subjects
+      .filter((s) => s.name.trim() !== "")
+      .map((s) => ({
+        name:       s.name.trim(),
+        year:       s.year,
+        department: s.department || formData.department,
+      }));
+
+    const payload = { ...formData, subjects: cleanedSubjects };
+
     try {
       if (editingStaff) {
-        await axios.put(`${BASE_URL}/staff/${editingStaff._id}`, formData);
+        await axios.put(`${BASE_URL}/staff/${editingStaff._id}`, payload);
         alert("Staff updated!");
       } else {
-        await axios.post(`${BASE_URL}/staff/add`, formData);
+        await axios.post(`${BASE_URL}/staff/add`, payload);
         alert("Staff added!");
       }
       setShowEditModal(false);
@@ -131,7 +139,7 @@ export default function ManageStaffs() {
 
   const openEdit = (staff) => {
     setEditingStaff(staff);
-    // Migrate old subjects that may not have department field
+    // ✅ Migrate: fallback department to staff's primary dept for old records
     const migratedSubjects = (staff.subjects || []).map((s) => ({
       name:       s.name       || "",
       year:       s.year       || "",
@@ -153,7 +161,6 @@ export default function ManageStaffs() {
       ...formData,
       subjects: [
         ...formData.subjects,
-        // New row inherits primary department as default for convenience
         emptySubject(isHOD ? hodDept : formData.department || ""),
       ],
     });
@@ -161,7 +168,17 @@ export default function ManageStaffs() {
   const removeSubject = (idx) =>
     setFormData({ ...formData, subjects: formData.subjects.filter((_, i) => i !== idx) });
 
-  // ── Render ───────────────────────────────────────────────
+  // ── Helper: all unique departments from subjects ──────────
+  const getStaffDepts = (staff) => {
+    const depts = [...new Set(
+      (staff.subjects || [])
+        .filter((s) => s.name)
+        .map((s) => s.department || staff.department)
+        .filter(Boolean)
+    )];
+    return depts.length > 0 ? depts : [staff.department].filter(Boolean);
+  };
+
   return (
     <section className="container py-3" style={{ maxWidth: "1100px" }}>
 
@@ -263,19 +280,14 @@ export default function ManageStaffs() {
                   <tr>
                     <th className="ps-4">Status</th>
                     <th>Name</th>
-                    <th>Primary Dept</th>
+                    <th>Departments</th>
                     <th>Subjects</th>
                     <th>Role</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredStaff.map((staff) => {
-                    // Collect unique depts from subjects for display
-                    const subjectDepts = [...new Set(
-                      (staff.subjects || [])
-                        .map((s) => s.department || staff.department)
-                        .filter(Boolean)
-                    )];
+                    const staffDepts = getStaffDepts(staff);
                     return (
                       <tr
                         key={staff._id}
@@ -293,9 +305,9 @@ export default function ManageStaffs() {
                         </td>
                         <td className="fw-semibold">{staff.name}</td>
                         <td>
-                          {/* Show all unique subject depts as pills */}
+                          {/* ✅ All unique departments from subjects */}
                           <div className="d-flex gap-1 flex-wrap">
-                            {subjectDepts.length > 0 ? subjectDepts.map((d) => (
+                            {staffDepts.map((d) => (
                               <span key={d} className="badge" style={{
                                 background: DEPT_CONFIG[d]?.bg || "#f1f5f9",
                                 color: DEPT_CONFIG[d]?.color || "#64748b",
@@ -304,21 +316,14 @@ export default function ManageStaffs() {
                               }}>
                                 {DEPT_CONFIG[d]?.emoji} {d}
                               </span>
-                            )) : (
-                              <span className="badge" style={{
-                                background: DEPT_CONFIG[staff.department]?.bg || "#f1f5f9",
-                                color: DEPT_CONFIG[staff.department]?.color || "#64748b",
-                                border: `1px solid ${DEPT_CONFIG[staff.department]?.color || "#94a3b8"}`,
-                                borderRadius: "20px", padding: "3px 8px", fontSize: "11px",
-                              }}>
-                                {DEPT_CONFIG[staff.department]?.emoji} {staff.department}
-                              </span>
-                            )}
+                            ))}
                           </div>
                         </td>
                         <td className="text-muted" style={{ fontSize: "13px" }}>
                           {staff.subjects?.filter(s => s.name).map((s) =>
-                            `${s.name} (${YEAR_LABELS[s.year] || s.year}${s.department && s.department !== staff.department ? " · " + s.department : ""})`
+                            `${s.name} (${YEAR_LABELS[s.year] || s.year}${
+                              s.department && s.department !== staff.department ? " · " + s.department : ""
+                            })`
                           ).join(", ") || "-"}
                         </td>
                         <td>
@@ -344,10 +349,7 @@ export default function ManageStaffs() {
       {/* ── VIEW MODAL ────────────────────────────────────── */}
       {showViewModal && selectedStaff && (() => {
         const cfg = DEPT_CONFIG[selectedStaff.department] || { color: "#2563eb", bg: "#eff6ff", emoji: "🏫" };
-        // Unique depts across all subjects
-        const allDepts = [...new Set(
-          (selectedStaff.subjects || []).map((s) => s.department || selectedStaff.department).filter(Boolean)
-        )];
+        const allDepts = getStaffDepts(selectedStaff);
         return (
           <div className="modal show fade d-block" style={{ background: "rgba(0,0,0,0.5)" }}
                onClick={() => setShowViewModal(false)}>
@@ -366,7 +368,7 @@ export default function ManageStaffs() {
                       {getInitials(selectedStaff.name)}
                     </div>
                     <h4 className="fw-bold mb-2">{selectedStaff.name}</h4>
-                    {/* All dept pills */}
+                    {/* ✅ All dept pills */}
                     <div className="d-flex gap-1 justify-content-center flex-wrap">
                       {allDepts.map((d) => (
                         <span key={d} className="badge" style={{
@@ -458,14 +460,12 @@ export default function ManageStaffs() {
 
               <div className="modal-body">
 
-                {/* Staff Name */}
                 <label className="form-label fw-semibold">Staff Name</label>
                 <input className="form-control mb-3 shadow-sm" placeholder="Enter name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
 
-                {/* Primary Department */}
                 <label className="form-label fw-semibold">
                   Primary Department
                   <span className="text-muted fw-normal ms-1" style={{ fontSize: "12px" }}>(used as default for subjects)</span>
@@ -485,7 +485,6 @@ export default function ManageStaffs() {
                   </select>
                 )}
 
-                {/* Role */}
                 <label className="form-label fw-semibold">Role</label>
                 <select className="form-select mb-3 shadow-sm"
                   value={formData.role}
@@ -495,7 +494,6 @@ export default function ManageStaffs() {
                   {ROLE_OPTIONS.map((r) => <option key={r}>{r}</option>)}
                 </select>
 
-                {/* Subjects — now with Dept per row */}
                 <label className="form-label fw-semibold d-flex align-items-center gap-2">
                   Subjects
                   <span className="badge" style={{ background: "#eff6ff", color: "#2563eb", fontSize: "11px", borderRadius: "20px" }}>
@@ -503,7 +501,6 @@ export default function ManageStaffs() {
                   </span>
                 </label>
 
-                {/* Column headers */}
                 <div className="d-flex gap-2 mb-1 px-1">
                   <div style={{ flex: "1 1 0", fontSize: "11px", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase" }}>Subject Name</div>
                   <div style={{ width: "120px", fontSize: "11px", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase" }}>Department</div>
@@ -515,7 +512,6 @@ export default function ManageStaffs() {
                   const sCfg = DEPT_CONFIG[sub.department];
                   return (
                     <div key={idx} className="d-flex gap-2 mb-2 align-items-center">
-                      {/* Subject name */}
                       <input
                         className="form-control shadow-sm"
                         placeholder="e.g. Data Structures"
@@ -524,9 +520,7 @@ export default function ManageStaffs() {
                         style={{ flex: "1 1 0" }}
                       />
 
-                      {/* Department per subject */}
                       {isHOD ? (
-                        // HOD → locked
                         <div className="d-flex align-items-center justify-content-center fw-bold"
                           style={{
                             width: "120px", height: "38px", borderRadius: "8px",
@@ -557,7 +551,6 @@ export default function ManageStaffs() {
                         </select>
                       )}
 
-                      {/* Year */}
                       <select
                         className="form-select shadow-sm"
                         style={{ width: "110px", flexShrink: 0 }}
@@ -570,7 +563,6 @@ export default function ManageStaffs() {
                         ))}
                       </select>
 
-                      {/* Remove */}
                       {formData.subjects.length > 1 && (
                         <button
                           className="btn btn-outline-danger btn-sm d-flex align-items-center justify-content-center"
@@ -582,7 +574,6 @@ export default function ManageStaffs() {
                   );
                 })}
 
-                {/* Subject summary pills */}
                 {formData.subjects.some(s => s.name && s.department) && (
                   <div className="d-flex gap-1 flex-wrap mt-1 mb-2">
                     {formData.subjects.filter(s => s.name && s.department).map((s, i) => {
@@ -605,7 +596,6 @@ export default function ManageStaffs() {
                   + Add Subject
                 </button>
 
-                {/* Status toggle */}
                 <div className="form-check form-switch mt-2">
                   <input type="checkbox" className="form-check-input"
                     style={{ width: "40px", height: "20px" }}
