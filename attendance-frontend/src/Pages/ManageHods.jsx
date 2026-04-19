@@ -20,14 +20,14 @@ const getInitials = (name = "") =>
   name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
 export default function ManageHODs() {
-  const [hodList, setHodList]       = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedHod, setSelectedHod]   = useState(null);
-  const [editingHod, setEditingHod]     = useState(null);
-  const [showViewCard, setShowViewCard] = useState(false);
+  const [hodList, setHodList]         = useState([]);
+  const [searchTerm, setSearchTerm]   = useState("");
+  const [selectedHod, setSelectedHod] = useState(null);
+  const [editingHod, setEditingHod]   = useState(null);
+  const [showViewCard, setShowViewCard]   = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [formData, setFormData] = useState({
-    name: "", department: "", role: "HOD", status: true,
+    name: "", department: "", status: true,
   });
 
   useEffect(() => { fetchHods(); }, []);
@@ -46,7 +46,11 @@ export default function ManageHODs() {
       alert("Please fill all fields!");
       return;
     }
-    const payload = { name: formData.name, department: formData.department, role: "HOD", status: formData.status };
+    const payload = {
+      name: formData.name,
+      department: formData.department,
+      status: formData.status,
+    };
     try {
       if (editingHod) {
         await axios.put(`${BASE_URL}/hod/${editingHod._id}`, payload);
@@ -77,7 +81,7 @@ export default function ManageHODs() {
   };
 
   const openAddModal = () => {
-    setFormData({ name: "", department: "", role: "HOD", status: true });
+    setFormData({ name: "", department: "", status: true });
     setEditingHod(null);
     setShowEditModal(true);
   };
@@ -125,8 +129,8 @@ export default function ManageHODs() {
       ) : (
         <div className="row g-3">
           {filteredHods.map((hod) => {
-            const cfg     = DEPT_COLORS[hod.department] || { bg: "#f8fafc", border: "#94a3b8", badge: "#64748b" };
-            const emoji   = DEPT_EMOJI[hod.department] || "🏫";
+            const cfg      = DEPT_COLORS[hod.department] || { bg: "#f8fafc", border: "#94a3b8", badge: "#64748b" };
+            const emoji    = DEPT_EMOJI[hod.department] || "🏫";
             const initials = getInitials(hod.name);
 
             return (
@@ -156,7 +160,6 @@ export default function ManageHODs() {
 
                     {/* Avatar + Status */}
                     <div className="d-flex align-items-center gap-3 mb-3">
-                      {/* Avatar circle with initials */}
                       <div
                         style={{
                           width: 52, height: 52, borderRadius: "50%",
@@ -174,7 +177,6 @@ export default function ManageHODs() {
                         <small className="text-muted">Head of Department</small>
                       </div>
 
-                      {/* Active / Inactive dot */}
                       <span
                         style={{
                           width: 12, height: 12, borderRadius: "50%", flexShrink: 0,
@@ -229,16 +231,17 @@ export default function ManageHODs() {
         const cfg   = DEPT_COLORS[selectedHod.department] || { bg: "#f8fafc", border: "#94a3b8", badge: "#64748b" };
         const emoji = DEPT_EMOJI[selectedHod.department] || "🏫";
         return (
-          <div className="modal show fade d-block" style={{ background: "rgba(0,0,0,0.5)" }}
-               onClick={() => setShowViewCard(false)}>
+          <div
+            className="modal show fade d-block"
+            style={{ background: "rgba(0,0,0,0.5)" }}
+            onClick={() => setShowViewCard(false)}
+          >
             <div className="modal-dialog modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
               <div className="modal-content shadow-lg border-0" style={{ borderRadius: "20px", overflow: "hidden" }}>
 
-                {/* Colored top strip */}
                 <div style={{ height: 8, background: cfg.border }} />
 
                 <div className="modal-body p-4">
-                  {/* Avatar + name */}
                   <div className="text-center mb-4">
                     <div
                       style={{
@@ -265,7 +268,6 @@ export default function ManageHODs() {
                     </span>
                   </div>
 
-                  {/* Info rows */}
                   <div className="p-3 rounded-3 mb-3" style={{ background: "#f8fafc" }}>
                     <div className="d-flex justify-content-between py-2 border-bottom">
                       <span className="text-muted">Role</span>
@@ -300,7 +302,11 @@ export default function ManageHODs() {
                       style={{ background: "linear-gradient(90deg,#2563eb,#1e3a8a)", borderRadius: "8px" }}
                       onClick={() => {
                         setEditingHod(selectedHod);
-                        setFormData(selectedHod);
+                        setFormData({
+                          name: selectedHod.name,
+                          department: selectedHod.department,
+                          status: selectedHod.status,
+                        });
                         setShowViewCard(false);
                         setShowEditModal(true);
                       }}
@@ -343,7 +349,7 @@ export default function ManageHODs() {
                   onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                 >
                   <option value="">Select Department</option>
-                  {["CSE","IT","ECE","MECH","CIVIL","EEE"].map(d => (
+                  {["CSE", "IT", "ECE", "MECH", "CIVIL", "EEE"].map((d) => (
                     <option key={d} value={d}>{DEPT_EMOJI[d]} {d}</option>
                   ))}
                 </select>
