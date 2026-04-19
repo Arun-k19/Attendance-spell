@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import axios from "axios";
-import BASE_URL from "./config"; // ✅ adjust path if needed
+import BASE_URL from "../config"; // ✅ adjust path if needed
 
 function LoginPage() {
   const [username, setUsername] = useState("");
