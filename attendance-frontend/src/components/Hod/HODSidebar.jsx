@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 const menu = [
   { key: "dashboard", label: "Dashboard", icon: "📊" },
@@ -9,12 +9,15 @@ const menu = [
 ];
 
 export default function HODSidebar({ activeTab, setActiveTab, handleLogout }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const renderLink = (m, dismiss = false) => (
     <button
       type="button"
-      onClick={() => setActiveTab(m.key)}
-      {...(dismiss ? { "data-bs-dismiss": "offcanvas" } : {})}
+      onClick={() => {
+        setActiveTab(m.key);
+        if (dismiss) setMobileOpen(false);
+      }}
       style={{
         display: "flex",
         alignItems: "center",
@@ -112,58 +115,102 @@ export default function HODSidebar({ activeTab, setActiveTab, handleLogout }) {
         </div>
       </aside>
 
+      {/* 🔥 Mobile Toggle Button */}
+      <button
+        className="d-md-none"
+        onClick={() => setMobileOpen(true)}
+        style={{
+          position: "fixed",
+          top: 12,
+          left: 12,
+          zIndex: 1100,
+          background: "#2563eb",
+          border: "none",
+          borderRadius: 8,
+          padding: "6px 10px",
+          color: "#fff",
+          fontSize: 18,
+          cursor: "pointer",
+        }}
+      >
+        ☰
+      </button>
+
+      {/* 🔥 Mobile Overlay */}
+      {mobileOpen && (
+        <div
+          onClick={() => setMobileOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            zIndex: 1099,
+          }}
+        />
+      )}
+
       {/* 🔥 Mobile Sidebar */}
       <div
-        className="offcanvas offcanvas-start"
-        tabIndex="-1"
-        id="hodMobileSidebar"
-        style={{ width: 260 }}
+        style={{
+          position: "fixed",
+          top: 0,
+          left: mobileOpen ? 0 : -270,
+          width: 260,
+          height: "100vh",
+          background: "#fff",
+          zIndex: 1100,
+          transition: "left 0.3s ease",
+          display: "flex",
+          flexDirection: "column",
+          boxShadow: "4px 0 20px rgba(0,0,0,0.15)",
+        }}
       >
+        {/* Mobile Header */}
         <div
-          className="offcanvas-header"
+          className="d-flex align-items-center gap-2 p-3"
           style={{
             background: "linear-gradient(90deg,#1e3a8a,#2563eb)",
             color: "#fff",
           }}
         >
-          <div className="d-flex align-items-center gap-2">
-            <img
-              src="/chendhuran-logo.png"
-              alt="logo"
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 8,
-                objectFit: "cover",
-              }}
-            />
-            <div>
-              <div className="fw-bold text-white" style={{ fontSize: 14 }}>
-                College Attendance
-              </div>
-              <small className="text-white-50">HOD Panel</small>
+          <img
+            src="/chendhuran-logo.png"
+            alt="logo"
+            style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover" }}
+          />
+          <div>
+            <div className="fw-bold text-white" style={{ fontSize: 14 }}>
+              College Attendance
             </div>
+            <small className="text-white-50">HOD Panel</small>
           </div>
-
           <button
-            type="button"
-            className="btn-close btn-close-white"
-            data-bs-dismiss="offcanvas"
-          ></button>
+            onClick={() => setMobileOpen(false)}
+            style={{
+              marginLeft: "auto",
+              background: "transparent",
+              border: "none",
+              color: "#fff",
+              fontSize: 20,
+              cursor: "pointer",
+            }}
+          >
+            ✕
+          </button>
         </div>
 
-        <div className="offcanvas-body p-0 d-flex flex-column">
-          <nav className="flex-grow-1 p-2">
-            {menu.map((m) => (
-              <div key={m.key}>{renderLink(m, true)}</div>
-            ))}
-          </nav>
+        {/* Mobile Menu */}
+        <nav className="flex-grow-1 p-2">
+          {menu.map((m) => (
+            <div key={m.key}>{renderLink(m, true)}</div>
+          ))}
+        </nav>
 
-          <div className="p-3 border-top">
-            <button className="btn btn-danger w-100" onClick={handleLogout}>
-              🚪 Logout
-            </button>
-          </div>
+        {/* Mobile Logout */}
+        <div className="p-3 border-top">
+          <button className="btn btn-danger w-100" onClick={handleLogout}>
+            🚪 Logout
+          </button>
         </div>
       </div>
     </>

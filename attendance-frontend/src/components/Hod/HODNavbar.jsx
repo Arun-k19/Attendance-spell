@@ -19,27 +19,8 @@ export default function HODNavbar({ now, dept }) {
     >
       {/* Left — menu + welcome */}
       <div className="d-flex align-items-center gap-3">
-        <button
-          className="d-md-none"
-          type="button"
-          data-bs-toggle="offcanvas"
-          data-bs-target="#hodSidebar"
-          aria-controls="hodSidebar"
-          style={{
-            background: "rgba(255,255,255,0.15)",
-            border: "1px solid rgba(255,255,255,0.25)",
-            borderRadius: 8, padding: "7px 10px",
-            cursor: "pointer", color: "white",
-            display: "flex", alignItems: "center",
-          }}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
-            fill="currentColor" viewBox="0 0 16 16">
-            <path fillRule="evenodd"
-              d="M2.5 12.5a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1h-10a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1h-10a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1h-10a.5.5 0 0 1-.5-.5z"/>
-          </svg>
-        </button>
-
+      
+<div className="d-md-none" style={{ width: 40 }} />
         <div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Welcome, HOD 🎓</div>
           <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>
