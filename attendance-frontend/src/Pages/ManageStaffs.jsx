@@ -52,7 +52,7 @@ export default function ManageStaffs() {
 
   const fetchStaff = async () => {
     try {
-      const res  = await axios.get(`${BASE_URL}/staff`);
+      const res  = await axios.get(`${BASE_URL}/api/staff`); // ✅ FIXED
       const data = isHOD ? res.data.filter((s) => s.department === hodDept) : res.data;
       setStaffList(data);
     } catch {
@@ -77,7 +77,6 @@ export default function ManageStaffs() {
     return selectedDept ? matchDept && matchSearch : matchSearch;
   });
 
-  // ── Save: clean subjects + ensure department saved ────────
   const handleSave = async () => {
     if (!formData.name || !formData.department || !formData.role) {
       alert("Please fill all required fields!");
@@ -91,7 +90,6 @@ export default function ManageStaffs() {
       return;
     }
 
-    // ✅ KEY FIX: clean & explicitly include department per subject
     const cleanedSubjects = formData.subjects
       .filter((s) => s.name.trim() !== "")
       .map((s) => ({
@@ -104,10 +102,10 @@ export default function ManageStaffs() {
 
     try {
       if (editingStaff) {
-        await axios.put(`${BASE_URL}/staff/${editingStaff._id}`, payload);
+        await axios.put(`${BASE_URL}/api/staff/${editingStaff._id}`, payload);
         alert("Staff updated!");
       } else {
-        await axios.post(`${BASE_URL}/staff/add`, payload);
+        await axios.post(`${BASE_URL}/api/staff/add`, payload);
         alert("Staff added!");
       }
       setShowEditModal(false);
@@ -122,7 +120,7 @@ export default function ManageStaffs() {
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this staff?")) return;
     try {
-      await axios.delete(`${BASE_URL}/staff/${id}`);
+      await axios.delete(`${BASE_URL}/api/staff/${id}`);
       setShowViewModal(false);
       setShowEditModal(false);
       fetchStaff();
@@ -139,7 +137,6 @@ export default function ManageStaffs() {
 
   const openEdit = (staff) => {
     setEditingStaff(staff);
-    // ✅ Migrate: fallback department to staff's primary dept for old records
     const migratedSubjects = (staff.subjects || []).map((s) => ({
       name:       s.name       || "",
       year:       s.year       || "",
@@ -168,7 +165,6 @@ export default function ManageStaffs() {
   const removeSubject = (idx) =>
     setFormData({ ...formData, subjects: formData.subjects.filter((_, i) => i !== idx) });
 
-  // ── Helper: all unique departments from subjects ──────────
   const getStaffDepts = (staff) => {
     const depts = [...new Set(
       (staff.subjects || [])
@@ -305,7 +301,6 @@ export default function ManageStaffs() {
                         </td>
                         <td className="fw-semibold">{staff.name}</td>
                         <td>
-                          {/* ✅ All unique departments from subjects */}
                           <div className="d-flex gap-1 flex-wrap">
                             {staffDepts.map((d) => (
                               <span key={d} className="badge" style={{
@@ -346,7 +341,7 @@ export default function ManageStaffs() {
         </div>
       )}
 
-      {/* ── VIEW MODAL ────────────────────────────────────── */}
+      {/* VIEW MODAL */}
       {showViewModal && selectedStaff && (() => {
         const cfg = DEPT_CONFIG[selectedStaff.department] || { color: "#2563eb", bg: "#eff6ff", emoji: "🏫" };
         const allDepts = getStaffDepts(selectedStaff);
@@ -368,7 +363,6 @@ export default function ManageStaffs() {
                       {getInitials(selectedStaff.name)}
                     </div>
                     <h4 className="fw-bold mb-2">{selectedStaff.name}</h4>
-                    {/* ✅ All dept pills */}
                     <div className="d-flex gap-1 justify-content-center flex-wrap">
                       {allDepts.map((d) => (
                         <span key={d} className="badge" style={{
@@ -448,7 +442,7 @@ export default function ManageStaffs() {
         );
       })()}
 
-      {/* ── EDIT / ADD MODAL ──────────────────────────────── */}
+      {/* EDIT / ADD MODAL */}
       {showEditModal && (
         <div className="modal show fade d-block" style={{ background: "rgba(0,0,0,0.5)" }}>
           <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
@@ -459,7 +453,6 @@ export default function ManageStaffs() {
               </div>
 
               <div className="modal-body">
-
                 <label className="form-label fw-semibold">Staff Name</label>
                 <input className="form-control mb-3 shadow-sm" placeholder="Enter name"
                   value={formData.name}
@@ -606,7 +599,6 @@ export default function ManageStaffs() {
                     {formData.status ? "✅ Active" : "❌ Inactive"}
                   </label>
                 </div>
-
               </div>
 
               <div className="modal-footer border-0 d-flex justify-content-between">

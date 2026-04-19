@@ -1,2 +1,2 @@
-const BASE_URL = "https://attendance-spell.onrender.com/api";
+const BASE_URL = "https://attendance-spell.onrender.com";
 export default BASE_URL;
