@@ -524,7 +524,7 @@ const Reports = () => {
     if (!department||!year||!fromDate||!toDate){showAlert("Fill all fields","danger");return;}
     setLoading(true);
     try{
-      const res=await axios.get(`${BASE_URL}/api/attendance/report`,{ // ✅ FIXED
+      const res=await axios.get(`${BASE_URL}/attendance/report`,{ // ✅ FIXED
         params:{department,year,from:fromDate,to:toDate}
       });
       const records=res.data;

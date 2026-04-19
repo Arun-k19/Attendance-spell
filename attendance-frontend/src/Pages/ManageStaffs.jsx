@@ -52,7 +52,7 @@ export default function ManageStaffs() {
 
   const fetchStaff = async () => {
     try {
-      const res  = await axios.get(`${BASE_URL}/api/staff`); // ✅ FIXED
+      const res  = await axios.get(`${BASE_URL}/staff`); // ✅ FIXED
       const data = isHOD ? res.data.filter((s) => s.department === hodDept) : res.data;
       setStaffList(data);
     } catch {
@@ -102,10 +102,10 @@ export default function ManageStaffs() {
 
     try {
       if (editingStaff) {
-        await axios.put(`${BASE_URL}/api/staff/${editingStaff._id}`, payload);
+        await axios.put(`${BASE_URL}/staff/${editingStaff._id}`, payload);
         alert("Staff updated!");
       } else {
-        await axios.post(`${BASE_URL}/api/staff/add`, payload);
+        await axios.post(`${BASE_URL}/staff/add`, payload);
         alert("Staff added!");
       }
       setShowEditModal(false);
@@ -120,7 +120,7 @@ export default function ManageStaffs() {
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this staff?")) return;
     try {
-      await axios.delete(`${BASE_URL}/api/staff/${id}`);
+      await axios.delete(`${BASE_URL}/staff/${id}`);
       setShowViewModal(false);
       setShowEditModal(false);
       fetchStaff();

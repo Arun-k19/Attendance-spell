@@ -18,12 +18,12 @@ const app = express();
 
 // ✅ Middleware
 app.use(cors({
-  origin: [
-    "https://attendance-spell.vercel.app",
-    "http://localhost:5174"
-  ],
+  origin: function(origin, callback) {
+    // Allow all origins (local + production)
+    callback(null, true);
+  },
   credentials: true
-}));~
+}));
 app.use(express.json());
 app.use("/uploads", express.static("uploads")); // serve uploaded files
 

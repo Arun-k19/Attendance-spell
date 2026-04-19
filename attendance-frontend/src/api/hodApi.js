@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Backend URL — same structure as staff
-const API_URL = "https://attendance-spell-management.onrender.com/api/hod";
+const API_URL = "https://attendance-spell.onrender.com/api/hod";
 
 // 🔹 Get all HODs
 export const getAllHods = () => axios.get(API_URL);

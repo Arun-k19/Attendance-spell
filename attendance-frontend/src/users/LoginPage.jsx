@@ -19,7 +19,7 @@ function LoginPage() {
 
     try {
       const res = await axios.post(
-        `${BASE_URL}/api/auth/login`, // ✅ FIXED
+        `${BASE_URL}/auth/login`, // ✅ FIXED
         { username, password, role }
       );
       console.log("LOGIN RESPONSE:", res.data);

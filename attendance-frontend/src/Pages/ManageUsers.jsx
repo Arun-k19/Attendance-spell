@@ -1,9 +1,9 @@
 import axios from "axios";
 import React, { useState, useEffect, useRef } from "react";
 
-const BASE       = "https://attendance-spell-management.onrender.com/api/auth";
-const BASE_HOD   = "https://attendance-spell-management.onrender.com/api/hod";
-const BASE_STAFF = "https://attendance-spell-management.onrender.com/api/staff";
+const BASE       = "https://attendance-spell.onrender.com/api/auth";
+const BASE_HOD   = "https://attendance-spell.onrender.com/api/hod";
+const BASE_STAFF = "https://attendance-spell.onrender.com/api/staff";
 
 const ROLE_CONFIG = {
   HOD:   { color: "#dc2626", bg: "#fee2e2", emoji: "👑" },
