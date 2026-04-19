@@ -7,7 +7,7 @@ const router = express.Router();
 // SAVE ATTENDANCE
 router.post("/save", async (req, res) => {
   try {
-    const { date, department, year, period, subject, attendance } = req.body;
+    const { date, department, year, period, subject, attendance, markedBy } = req.body;
 
     // ✅ CHECK DUPLICATE
     const existing = await Attendance.findOne({
@@ -22,13 +22,14 @@ router.post("/save", async (req, res) => {
         message: "Attendance already marked for this period",
       });
     }
+
     // Convert regNo -> studentId
     const mapped = await Promise.all(
       attendance.map(async (item) => {
         const student = await Student.findOne({ regNo: item.regNo });
         return {
           studentId: student?._id,
-          status: item.status,
+          status:    item.status,
         };
       })
     );
@@ -39,6 +40,8 @@ router.post("/save", async (req, res) => {
       year,
       period,
       subject,
+      markedBy:  markedBy || "",   // ✅ staff username
+      markedAt:  new Date(),       // ✅ current time
       attendance: mapped,
     });
 
@@ -57,17 +60,14 @@ router.get("/view", async (req, res) => {
 
     const query = {
       department,
-      year: Number(year), // 🔥 FIX
+      year: Number(year),
     };
 
-    // 🔥 DATE RANGE FIX (IMPORTANT)
     if (date) {
       const start = new Date(date);
       start.setHours(0, 0, 0, 0);
-
       const end = new Date(date);
       end.setHours(23, 59, 59, 999);
-
       query.date = { $gte: start, $lte: end };
     }
 
@@ -76,7 +76,6 @@ router.get("/view", async (req, res) => {
     }
 
     const records = await Attendance.find(query);
-
     res.json(records);
 
   } catch (error) {

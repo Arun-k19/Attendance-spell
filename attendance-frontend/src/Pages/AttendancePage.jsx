@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { getAttendance, saveAttendance } from "../api/attendanceApi";
 import { getStudentsByFilter } from "../api/studentApi";
+//attendance page
 
 // ─── CONFIG ─────────────────────────────────────────────────────────
 const DEPT_CONFIG = {
@@ -12,8 +13,8 @@ const DEPT_CONFIG = {
   CIVIL: { emoji: "🏗️", color: "#15803d" },
 };
 
-const YEAR_LABELS  = { "1": "I Year", "2": "II Year", "3": "III Year", "4": "IV Year" };
-const ALL_PERIODS  = [1, 2, 3, 4, 5, 6, 7, 8];
+const YEAR_LABELS = { "1": "I Year", "2": "II Year", "3": "III Year", "4": "IV Year" };
+const ALL_PERIODS = [1, 2, 3, 4, 5, 6, 7, 8];
 
 // ─── HOLIDAYS ────────────────────────────────────────────────────────
 const HOLIDAYS = [
@@ -34,29 +35,20 @@ const getInitials = (name = "") =>
   name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
 // ─── ROLE DETECTION ──────────────────────────────────────────────────
-/**
- * Returns info about the logged-in user:
- *
- * Admin  → { role:"admin",  allowedDepts: ALL, allowedYears: ALL }
- * HOD    → { role:"hod",    allowedDepts: [hodDept], allowedYears: ALL }
- * Staff  → { role:"staff",  allowedDepts: unique depts from subjects,
- *                            allowedYearsByDept: { CSE:["1","3"], ECE:["2"] } }
- *
- * Staff subjects array format (from ManageStaff): [{ name, year, department? }]
- * If `department` field is missing in subject, fallback to staff.department.
- */
 const getRoleInfo = () => {
-  const userData  = JSON.parse(localStorage.getItem("user")       || "{}");
-  const hodData   = JSON.parse(localStorage.getItem("hodData")    || "{}");
-  const staffData = JSON.parse(localStorage.getItem("staffData")  || "{}");
+  const userData  = JSON.parse(localStorage.getItem("user")      || "{}");
+  const hodData   = JSON.parse(localStorage.getItem("hodData")   || "{}");
+  const staffData = JSON.parse(localStorage.getItem("staffData") || "{}");
 
-  const role = (userData?.role || "").toLowerCase(); // "admin" | "hod" | "staff" | "faculty"
+  const role = (userData?.role || "").toLowerCase();
 
   if (role === "admin") {
     return {
       role: "admin",
       allowedDepts: Object.keys(DEPT_CONFIG),
-      allowedYearsByDept: null, // null = all years allowed for every dept
+      allowedYearsByDept: null,
+      subjects: [],
+      username: userData?.username || "",
     };
   }
 
@@ -66,35 +58,42 @@ const getRoleInfo = () => {
       role: "hod",
       allowedDepts: dept ? [dept] : Object.keys(DEPT_CONFIG),
       allowedYearsByDept: null,
+      subjects: [],
+      username: userData?.username || "",
     };
   }
 
-  // Staff / Faculty
-  // staffData.subjects = [{ name: "Maths", year: "1", department: "CSE" }, ...]
-  // staffData.department = "CSE"  (primary dept – fallback if subject has no dept field)
-  const subjects   = staffData?.subjects || userData?.subjects || [];
-  const primaryDept = staffData?.department || userData?.department || "";
+  // ─── STAFF ───────────────────────────────────────────────
+  const subjects =
+    (staffData?.subjects?.length ? staffData.subjects : null) ||
+    (userData?.subjects?.length  ? userData.subjects  : null) ||
+    [];
+
+  const primaryDept = (
+    staffData?.department || userData?.department || ""
+  ).trim().toUpperCase();
+
+  const username = staffData?.username || userData?.username || "";
 
   if (!subjects.length) {
-    // No subjects configured – fall back to primary dept, all years
     return {
       role: "staff",
       allowedDepts: primaryDept ? [primaryDept] : [],
       allowedYearsByDept: primaryDept ? { [primaryDept]: ["1","2","3","4"] } : {},
+      subjects: [],
+      username,
     };
   }
 
-  // Build { dept -> Set<year> } from subjects
   const map = {};
-  subjects.forEach(({ name, year, department }) => {
-    if (!year) return;
-    const dept = department || primaryDept;
-    if (!dept) return;
+  subjects.forEach((sub) => {
+    const year = String(sub.year || "").trim();
+    const dept = (sub.department || sub.dept || primaryDept || "").trim().toUpperCase();
+    if (!year || !dept) return;
     if (!map[dept]) map[dept] = new Set();
-    map[dept].add(String(year));
+    map[dept].add(year);
   });
 
-  // Convert Sets to arrays
   const allowedYearsByDept = {};
   Object.entries(map).forEach(([d, ySet]) => {
     allowedYearsByDept[d] = Array.from(ySet).sort();
@@ -104,6 +103,8 @@ const getRoleInfo = () => {
     role: "staff",
     allowedDepts: Object.keys(allowedYearsByDept),
     allowedYearsByDept,
+    subjects,
+    username,
   };
 };
 
@@ -246,28 +247,24 @@ const CalendarPopover = ({ label, value, onChange }) => {
 // ─── MAIN PAGE ───────────────────────────────────────────────────────
 export default function AttendancePage() {
 
-  // ── Role info (computed once on mount) ──────────────────
   const roleInfo = getRoleInfo();
-  // roleInfo = { role, allowedDepts, allowedYearsByDept }
 
-  // ── State ────────────────────────────────────────────────
-  const [department, setDepartment] = useState(() => {
-    // If only one dept allowed, auto-select it
-    return roleInfo.allowedDepts.length === 1 ? roleInfo.allowedDepts[0] : "";
-  });
-  const [year,       setYear]       = useState("");
-  const [period,     setPeriod]     = useState("");
-  const [subject,    setSubject]    = useState("");
-  const [date,       setDate]       = useState("");
+  const [department, setDepartment] = useState(() =>
+    roleInfo.allowedDepts.length === 1 ? roleInfo.allowedDepts[0] : ""
+  );
+  const [year,    setYear]    = useState("");
+  const [period,  setPeriod]  = useState("");
+  const [subject, setSubject] = useState("");
+  const [date,    setDate]    = useState("");
 
-  const [students,          setStudents]          = useState([]);
-  const [attendance,        setAttendance]         = useState({});
-  const [isLoaded,          setIsLoaded]           = useState(false);
-  const [alreadyMarked,     setAlreadyMarked]      = useState(false);
-  const [attendanceRecords, setAttendanceRecords]  = useState([]);
-  const [searchTerm,        setSearchTerm]         = useState("");
-  const [submitting,        setSubmitting]         = useState(false);
-  const [loading,           setLoading]            = useState(false);
+  const [students,          setStudents]         = useState([]);
+  const [attendance,        setAttendance]        = useState({});
+  const [isLoaded,          setIsLoaded]          = useState(false);
+  const [alreadyMarked,     setAlreadyMarked]     = useState(false);
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [searchTerm,        setSearchTerm]        = useState("");
+  const [submitting,        setSubmitting]        = useState(false);
+  const [loading,           setLoading]           = useState(false);
 
   useEffect(() => {
     setDate(new Date().toISOString().split("T")[0]);
@@ -277,21 +274,39 @@ export default function AttendancePage() {
     fetchTakenPeriods();
   }, [department, year, date]);
 
-  // ── Auto-select year if staff has only 1 year for selected dept ──
   useEffect(() => {
     if (!department) { setYear(""); return; }
     const allowed = getAllowedYears(department);
     if (allowed.length === 1) setYear(allowed[0]);
     else setYear("");
     setPeriod("");
+    setSubject("");
     setIsLoaded(false);
   }, [department]);
 
-  // ── Helper: get allowed years for a dept ────────────────
+  // Reset subject when year changes
+  useEffect(() => {
+    setSubject("");
+  }, [year]);
+
   const getAllowedYears = (dept) => {
-    if (!roleInfo.allowedYearsByDept) return ["1","2","3","4"]; // admin/HOD = all years
+    if (!roleInfo.allowedYearsByDept) return ["1","2","3","4"];
     return roleInfo.allowedYearsByDept[dept] || [];
   };
+
+  // ✅ Filter subjects by selected dept + year (for staff only)
+  const getFilteredSubjects = () => {
+    if (!department || !year) return [];
+    if (roleInfo.role === "admin" || roleInfo.role === "hod") return [];
+    return (roleInfo.subjects || []).filter((s) => {
+      const sDept = (s.department || s.dept || "").toUpperCase();
+      const sYear = String(s.year || "");
+      return sDept === department.toUpperCase() && sYear === String(year);
+    });
+  };
+
+  const filteredSubjects    = getFilteredSubjects();
+  const showSubjectDropdown = filteredSubjects.length > 0;
 
   const fetchTakenPeriods = async () => {
     if (!department || !year || !date) return;
@@ -299,9 +314,11 @@ export default function AttendancePage() {
       const res = await getAttendance({ date, department, year });
       const records = res.data.map((r) => ({
         department: r.department,
-        year: r.year,
-        date: new Date(r.date).toISOString().split("T")[0],
-        period: r.period,
+        year:       r.year,
+        date:       new Date(r.date).toISOString().split("T")[0],
+        period:     r.period,
+        markedBy:   r.markedBy || "",
+        markedAt:   r.markedAt || "",
       }));
       setAttendanceRecords(records);
     } catch (err) {
@@ -361,11 +378,12 @@ export default function AttendancePage() {
     const payload = {
       date,
       department,
-      year: Number(year),
-      period: Number(period),
+      year:     Number(year),
+      period:   Number(period),
       subject,
+      markedBy: roleInfo.username || "", // ✅ staff name
       attendance: students.map((s) => ({
-        regNo: s.regNo,
+        regNo:  s.regNo,
         status: attendance[s.regNo] === "P" ? "Present" : "Absent",
       })),
     };
@@ -388,8 +406,8 @@ export default function AttendancePage() {
     return !attendanceRecords.some(
       (r) =>
         String(r.department).toLowerCase() === String(department).toLowerCase() &&
-        String(r.year) === String(year) &&
-        r.date === date &&
+        String(r.year)   === String(year) &&
+        r.date           === date &&
         Number(r.period) === Number(p)
     );
   });
@@ -399,12 +417,11 @@ export default function AttendancePage() {
       (r) =>
         String(r.department).toLowerCase() === String(department).toLowerCase() &&
         String(r.year) === String(year) &&
-        r.date === date
+        r.date         === date
     )
-    .map((r) => Number(r.period))
-    .sort((a, b) => a - b);
+    .sort((a, b) => a.period - b.period);
 
-  const filteredStudents  = students.filter(
+  const filteredStudents = students.filter(
     (s) =>
       s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.regNo.toLowerCase().includes(searchTerm.toLowerCase())
@@ -420,10 +437,8 @@ export default function AttendancePage() {
     ? new Date(date).toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
     : "";
 
-  // Allowed years for currently selected dept
   const allowedYears = getAllowedYears(department);
 
-  // ── Render ────────────────────────────────────────────────
   return (
     <section className="container py-3" style={{ maxWidth: "1000px" }}>
 
@@ -431,7 +446,6 @@ export default function AttendancePage() {
       <div className="mb-4">
         <h3 className="fw-bold text-primary mb-0">📋 Attendance</h3>
         {date && <small className="text-muted">{formattedDate}</small>}
-        {/* Role badge */}
         <div className="mt-1">
           {roleInfo.role === "admin" && (
             <span className="badge" style={{ background: "#1e3a8a", color: "#fff", borderRadius: "20px", padding: "4px 12px", fontSize: "11px" }}>🛡 Admin — All Departments</span>
@@ -443,7 +457,7 @@ export default function AttendancePage() {
           )}
           {roleInfo.role === "staff" && (
             <span className="badge" style={{ background: "#7c3aed", color: "#fff", borderRadius: "20px", padding: "4px 12px", fontSize: "11px" }}>
-              👤 Staff — {roleInfo.allowedDepts.join(", ")}
+              👤 {roleInfo.username} — {roleInfo.allowedDepts.join(", ")}
             </span>
           )}
         </div>
@@ -457,7 +471,6 @@ export default function AttendancePage() {
           <div className="col-md-3">
             <label className="form-label fw-semibold text-muted" style={{ fontSize: "12px" }}>DEPARTMENT</label>
             {roleInfo.allowedDepts.length === 1 ? (
-              // Only one dept → show as read-only pill
               <div className="form-control shadow-sm fw-bold d-flex align-items-center gap-2"
                 style={{ background: "#f1f5f9", color: deptCfg.color, cursor: "default" }}>
                 {deptCfg.emoji} {department}
@@ -474,11 +487,10 @@ export default function AttendancePage() {
             )}
           </div>
 
-          {/* Year — filtered by staff's allowed years for selected dept */}
+          {/* Year */}
           <div className="col-md-2">
             <label className="form-label fw-semibold text-muted" style={{ fontSize: "12px" }}>YEAR</label>
             {allowedYears.length === 1 ? (
-              // Only one year → show as read-only
               <div className="form-control shadow-sm fw-bold d-flex align-items-center gap-2"
                 style={{ background: "#f1f5f9", color: "#2563eb", cursor: "default" }}>
                 {YEAR_LABELS[allowedYears[0]]}
@@ -509,12 +521,23 @@ export default function AttendancePage() {
             </select>
           </div>
 
-          {/* Subject */}
+          {/* ✅ Subject — dropdown for staff, text for admin/hod */}
           <div className="col-md-3">
             <label className="form-label fw-semibold text-muted" style={{ fontSize: "12px" }}>SUBJECT</label>
-            <input className="form-control shadow-sm" placeholder="e.g. Maths, Physics"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)} />
+            {showSubjectDropdown ? (
+              <select className="form-select shadow-sm"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}>
+                <option value="">Select Subject</option>
+                {filteredSubjects.map((s, i) => (
+                  <option key={i} value={s.name}>📚 {s.name}</option>
+                ))}
+              </select>
+            ) : (
+              <input className="form-control shadow-sm" placeholder="e.g. Maths, Physics"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)} />
+            )}
           </div>
 
           {/* Date */}
@@ -524,7 +547,6 @@ export default function AttendancePage() {
 
         </div>
 
-        {/* Load button */}
         <div className="mt-3 d-flex justify-content-end">
           <button
             className="btn fw-bold px-4 text-white"
@@ -539,23 +561,33 @@ export default function AttendancePage() {
         </div>
       </div>
 
-      {/* COMPLETED PERIODS */}
+      {/* ✅ COMPLETED PERIODS — with markedBy + markedAt time */}
       {completedPeriods.length > 0 && (
         <div className="card border-0 mb-3 p-3"
           style={{ borderRadius: "12px", background: "#fffbeb", borderLeft: "4px solid #f59e0b" }}>
-          <div className="d-flex align-items-center gap-2">
+          <div className="d-flex align-items-center gap-2 mb-2">
             <span style={{ fontSize: "18px" }}>⚠️</span>
-            <div>
-              <div className="fw-semibold" style={{ color: "#92400e" }}>Periods already completed today</div>
-              <div className="d-flex gap-1 flex-wrap mt-1">
-                {completedPeriods.map((p) => (
-                  <span key={p} className="badge"
-                    style={{ background: "#fef3c7", color: "#92400e", borderRadius: "20px", padding: "4px 10px" }}>
-                    Period {p}
+            <div className="fw-semibold" style={{ color: "#92400e" }}>Periods already completed today</div>
+          </div>
+          <div className="d-flex flex-column gap-2">
+            {completedPeriods.map((r) => (
+              <div key={r.period} className="d-flex align-items-center gap-2 flex-wrap">
+                <span className="badge"
+                  style={{ background: "#fef3c7", color: "#92400e", borderRadius: "20px", padding: "4px 10px" }}>
+                  Period {r.period}
+                </span>
+                {r.markedBy && (
+                  <span style={{ fontSize: "12px", color: "#78350f" }}>
+                    👤 <strong>{r.markedBy}</strong>
                   </span>
-                ))}
+                )}
+                {r.markedAt && (
+                  <span style={{ fontSize: "11px", color: "#a16207" }}>
+                    🕐 {new Date(r.markedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                )}
               </div>
-            </div>
+            ))}
           </div>
         </div>
       )}
@@ -574,7 +606,6 @@ export default function AttendancePage() {
       {/* STUDENT LIST */}
       {isLoaded && (
         <>
-          {/* Stats bar */}
           <div className="card border-0 shadow-sm mb-3 p-3"
             style={{ borderRadius: "16px", background: "linear-gradient(90deg,#2563eb,#1e3a8a)", color: "white" }}>
             <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -594,7 +625,6 @@ export default function AttendancePage() {
                   <small style={{ opacity: 0.8 }}>Absent</small>
                 </div>
               </div>
-
               <div className="d-flex align-items-center gap-3">
                 <div style={{
                   width: 56, height: 56, borderRadius: "50%",
@@ -610,7 +640,6 @@ export default function AttendancePage() {
                 </div>
               </div>
             </div>
-
             <div className="mt-3" style={{ background: "rgba(255,255,255,0.2)", borderRadius: "999px", height: 8 }}>
               <div style={{ width: `${attendancePercent}%`, height: "100%", background: "#86efac", borderRadius: "999px", transition: "width 0.4s ease" }} />
             </div>
@@ -624,6 +653,9 @@ export default function AttendancePage() {
             <span className="badge" style={{ background: "#f1f5f9", color: "#334155", borderRadius: "20px", padding: "6px 14px", fontSize: "13px" }}>🕐 Period {period}</span>
             <span className="badge" style={{ background: "#f1f5f9", color: "#334155", borderRadius: "20px", padding: "6px 14px", fontSize: "13px" }}>📚 {subject}</span>
             <span className="badge" style={{ background: "#f1f5f9", color: "#334155", borderRadius: "20px", padding: "6px 14px", fontSize: "13px" }}>📅 {date}</span>
+            {roleInfo.username && (
+              <span className="badge" style={{ background: "#ede9fe", color: "#5b21b6", borderRadius: "20px", padding: "6px 14px", fontSize: "13px" }}>👤 {roleInfo.username}</span>
+            )}
           </div>
 
           {/* Search */}
@@ -651,8 +683,7 @@ export default function AttendancePage() {
                         <div style={{
                           width: 40, height: 40, borderRadius: "50%",
                           background: isPresent ? "#22c55e" : "#ef4444",
-                          color: "white",
-                          display: "flex", alignItems: "center", justifyContent: "center",
+                          color: "white", display: "flex", alignItems: "center", justifyContent: "center",
                           fontWeight: "bold", fontSize: "14px", flexShrink: 0,
                         }}>
                           {getInitials(s.name)}
