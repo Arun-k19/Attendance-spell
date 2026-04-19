@@ -3,6 +3,7 @@ import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import axios from "axios";
+import BASE_URL from "../api/config"; // ✅ ADDED
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell
@@ -182,14 +183,12 @@ const CalendarPopover = ({ label, value, onChange, fromDate, toDate }) => {
 };
 
 // ─── STUDENT MODAL ───────────────────────────────────────────────────
-// Builds subject-wise breakdown directly from rawRecords — NO extra API call
 const StudentModal = ({ student, onClose, department, year, fromDate, toDate, rawRecords }) => {
   const [expandedSubj, setExpandedSubj] = useState(null);
 
   const pct      = Number(student.percentage);
   const pctColor = pct>=75?"#16a34a":pct>=60?"#d97706":"#dc2626";
 
-  // Build subject map from rawRecords for this student
   const subjectMap = {};
   rawRecords.forEach(rec => {
     const subj  = rec.subject || "Unknown";
@@ -216,8 +215,6 @@ const StudentModal = ({ student, onClose, department, year, fromDate, toDate, ra
   return (
     <div onClick={onClose} style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}>
       <div onClick={e=>e.stopPropagation()} style={{ background:"#fff",borderRadius:16,width:"100%",maxWidth:560,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 60px rgba(0,0,0,0.2)",animation:"slideUp 0.25s ease" }}>
-
-        {/* Header */}
         <div style={{ background:"linear-gradient(135deg,#1e3a5f,#2563eb)",borderRadius:"16px 16px 0 0",padding:"20px 24px",color:"#fff" }}>
           <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start" }}>
             <div>
@@ -240,8 +237,6 @@ const StudentModal = ({ student, onClose, department, year, fromDate, toDate, ra
             </div>
           </div>
         </div>
-
-        {/* Body */}
         <div style={{ padding:24 }}>
           <div style={{ display:"flex",gap:10,marginBottom:20,flexWrap:"wrap" }}>
             {[
@@ -253,7 +248,6 @@ const StudentModal = ({ student, onClose, department, year, fromDate, toDate, ra
               <span key={i} style={{ background:b.bg,color:b.color,borderRadius:6,padding:"4px 12px",fontSize:12,fontWeight:600,border:b.border?`1px solid ${b.border}`:"none" }}>{b.text}</span>
             ))}
           </div>
-
           {chartData.length===0 ? (
             <div style={{ textAlign:"center",padding:40,color:"#94a3b8" }}>
               <div style={{ fontSize:32,marginBottom:8 }}>📭</div>
@@ -262,8 +256,6 @@ const StudentModal = ({ student, onClose, department, year, fromDate, toDate, ra
           ) : (
             <>
               <div style={{ fontWeight:700,fontSize:14,color:"#1e3a5f",marginBottom:12 }}>Subject-wise Attendance</div>
-
-              {/* Bar chart */}
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={chartData} barSize={36}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false}/>
@@ -278,8 +270,6 @@ const StudentModal = ({ student, onClose, department, year, fromDate, toDate, ra
                 </BarChart>
               </ResponsiveContainer>
               <div style={{ textAlign:"right",fontSize:11,color:"#94a3b8",marginTop:-4,marginBottom:16 }}>— 75% minimum required</div>
-
-              {/* Subject table with period drill-down */}
               <table style={{ width:"100%",borderCollapse:"collapse",fontSize:13 }}>
                 <thead>
                   <tr style={{ background:"#f8fafc" }}>
@@ -294,10 +284,7 @@ const StudentModal = ({ student, onClose, department, year, fromDate, toDate, ra
                     const isEx= expandedSubj===row.name;
                     return (
                       <React.Fragment key={i}>
-                        <tr
-                          style={{ borderBottom:"1px solid #f1f5f9",cursor:"pointer",background:isEx?"#f8fafc":"transparent" }}
-                          onClick={()=>setExpandedSubj(isEx?null:row.name)}
-                        >
+                        <tr style={{ borderBottom:"1px solid #f1f5f9",cursor:"pointer",background:isEx?"#f8fafc":"transparent" }} onClick={()=>setExpandedSubj(isEx?null:row.name)}>
                           <td style={{ padding:"9px 10px",fontWeight:500 }}>
                             <span style={{ marginRight:6,fontSize:11,color:"#94a3b8" }}>{isEx?"▾":"▸"}</span>
                             {row.name}
@@ -309,25 +296,13 @@ const StudentModal = ({ student, onClose, department, year, fromDate, toDate, ra
                           </td>
                           <td style={{ padding:"9px 10px",fontSize:11,color:"#94a3b8" }}>{row.total} classes</td>
                         </tr>
-
-                        {/* Period-wise drill-down */}
                         {isEx && (
                           <tr>
                             <td colSpan={5} style={{ padding:"0 10px 14px",background:"#f8fafc" }}>
-                              <div style={{ fontSize:11,fontWeight:700,color:"#64748b",marginBottom:8,marginTop:6 }}>
-                                Period-wise breakdown — {row.name}
-                              </div>
+                              <div style={{ fontSize:11,fontWeight:700,color:"#64748b",marginBottom:8,marginTop:6 }}>Period-wise breakdown — {row.name}</div>
                               <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
-                                {row.periods
-                                  .slice()
-                                  .sort((a,b)=>a.date.localeCompare(b.date))
-                                  .map((p,pi)=>(
-                                  <div key={pi} style={{
-                                    background:p.status==="Present"?"#f0fdf4":"#fef2f2",
-                                    border:`1px solid ${p.status==="Present"?"#86efac":"#fca5a5"}`,
-                                    borderRadius:6,padding:"4px 10px",fontSize:11,
-                                    color:p.status==="Present"?"#15803d":"#dc2626",fontWeight:500
-                                  }}>
+                                {row.periods.slice().sort((a,b)=>a.date.localeCompare(b.date)).map((p,pi)=>(
+                                  <div key={pi} style={{ background:p.status==="Present"?"#f0fdf4":"#fef2f2",border:`1px solid ${p.status==="Present"?"#86efac":"#fca5a5"}`,borderRadius:6,padding:"4px 10px",fontSize:11,color:p.status==="Present"?"#15803d":"#dc2626",fontWeight:500 }}>
                                     {p.date} · P{p.period} · {p.status==="Present"?"✓ P":"✗ A"}
                                   </div>
                                 ))}
@@ -349,11 +324,9 @@ const StudentModal = ({ student, onClose, department, year, fromDate, toDate, ra
 };
 
 // ─── SUBJECT REPORT MODAL ────────────────────────────────────────────
-// Specific subject → all students attendance for that subject
 const SubjectReport = ({ rawRecords, subject, department, year, fromDate, toDate, workingDays, onClose }) => {
   const [search, setSearch] = useState("");
 
-  // Build student list for this subject only
   const studentMap = {};
   rawRecords
     .filter(r => (r.subject||"").toLowerCase()===subject.toLowerCase())
@@ -378,10 +351,7 @@ const SubjectReport = ({ rawRecords, subject, department, year, fromDate, toDate
     percentage: s.total?((s.present/s.total)*100).toFixed(1):"0.0",
   })).sort((a,b)=>Number(b.percentage)-Number(a.percentage));
 
-  const filtered    = students.filter(s =>
-    s.name?.toLowerCase().includes(search.toLowerCase())||
-    s.roll?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered    = students.filter(s => s.name?.toLowerCase().includes(search.toLowerCase())||s.roll?.toLowerCase().includes(search.toLowerCase()));
   const defaulters  = students.filter(s=>Number(s.percentage)<75);
   const classAvg    = students.length?(students.reduce((a,b)=>a+Number(b.percentage),0)/students.length).toFixed(1):0;
   const totalClasses= students.length?(students[0]?.total||0):0;
@@ -417,7 +387,7 @@ const SubjectReport = ({ rawRecords, subject, department, year, fromDate, toDate
   };
 
   const exportSubjectExcel = () => {
-    const data=[{Subject:subject,Dept:department,Year:year,From:fromDate,To:toDate},{},...students.map(r({"Roll No":r.roll,Name:r.name,Present:r.present,Absent:r.absent,Total:r.total,Percentage:r.percentage+"%"}))];
+    const data=[{Subject:subject,Dept:department,Year:year,From:fromDate,To:toDate},{},...students.map(r=>({ "Roll No":r.roll,Name:r.name,Present:r.present,Absent:r.absent,Total:r.total,Percentage:r.percentage+"%" }))];
     const ws=XLSX.utils.json_to_sheet(data), wb=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb,ws,"Attendance");
     XLSX.writeFile(wb,`${subject}_Attendance_${department}_Year${year}.xlsx`);
@@ -426,8 +396,6 @@ const SubjectReport = ({ rawRecords, subject, department, year, fromDate, toDate
   return (
     <div onClick={onClose} style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:99998,display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}>
       <div onClick={e=>e.stopPropagation()} style={{ background:"#fff",borderRadius:16,width:"100%",maxWidth:660,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 24px 60px rgba(0,0,0,0.25)",animation:"slideUp 0.25s ease" }}>
-
-        {/* Header */}
         <div style={{ background:"linear-gradient(135deg,#7c3aed,#4f46e5)",borderRadius:"16px 16px 0 0",padding:"20px 24px",color:"#fff" }}>
           <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start" }}>
             <div>
@@ -451,24 +419,17 @@ const SubjectReport = ({ rawRecords, subject, department, year, fromDate, toDate
             ))}
           </div>
         </div>
-
-        {/* Body */}
         <div style={{ padding:20 }}>
-          {/* Toolbar */}
           <div style={{ display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center" }}>
             <input placeholder="🔍  Search name or roll..." value={search} onChange={e=>setSearch(e.target.value)} style={{ flex:1,minWidth:160,height:36,border:"1px solid #cbd5e1",borderRadius:8,padding:"0 12px",fontSize:13,background:"#f8fafc" }}/>
             <button onClick={exportSubjectPDF}   style={{ border:"none",borderRadius:8,padding:"0 14px",height:36,background:"#dc2626",color:"#fff",fontWeight:600,fontSize:13,cursor:"pointer" }}>📄 PDF</button>
             <button onClick={exportSubjectExcel} style={{ border:"none",borderRadius:8,padding:"0 14px",height:36,background:"#16a34a",color:"#fff",fontWeight:600,fontSize:13,cursor:"pointer" }}>📊 Excel</button>
           </div>
-
-          {/* Defaulter alert */}
           {defaulters.length>0&&(
             <div style={{ background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:13,color:"#dc2626",fontWeight:500 }}>
               ⚠ {defaulters.length} student{defaulters.length>1?"s":""} below 75% in {subject}
             </div>
           )}
-
-          {/* Student rows */}
           <div style={{ display:"flex",flexDirection:"column",gap:6 }}>
             {filtered.map((r,i)=>{
               const p=Number(r.percentage);
@@ -510,7 +471,7 @@ const Reports = () => {
   const [toDate,         setToDate]         = useState("");
   const [showReport,     setShowReport]     = useState(false);
   const [report,         setReport]         = useState([]);
-  const [rawRecords,     setRawRecords]     = useState([]);   // full API records for modal
+  const [rawRecords,     setRawRecords]     = useState([]);
   const [workingDays,    setWorkingDays]    = useState(null);
   const [showToast,      setShowToast]      = useState(null);
   const [search,         setSearch]         = useState("");
@@ -563,16 +524,12 @@ const Reports = () => {
     if (!department||!year||!fromDate||!toDate){showAlert("Fill all fields","danger");return;}
     setLoading(true);
     try{
-      const res=await axios.get("http://localhost:3001/api/attendance/report",{
+      const res=await axios.get(`${BASE_URL}/api/attendance/report`,{ // ✅ FIXED
         params:{department,year,from:fromDate,to:toDate}
       });
       const records=res.data;
       if (!records.length){showAlert("No attendance data found","danger");setLoading(false);return;}
-
-      // Save full records — used by both modals
       setRawRecords(records);
-
-      // Build student summary
       const final=[];
       records.forEach(rec=>{
         rec.attendance?.forEach(a=>{
@@ -597,7 +554,6 @@ const Reports = () => {
     }
   };
 
-  // Unique subjects from rawRecords
   const uniqueSubjects=[...new Set(rawRecords.map(r=>r.subject).filter(Boolean))].sort();
 
   const exportPDF=()=>{
@@ -671,7 +627,6 @@ const Reports = () => {
         .subj-chip:hover{border-color:#7c3aed;background:#f5f3ff;color:#7c3aed;}
       `}</style>
 
-      {/* Title */}
       <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:6 }}>
         <div style={{ background:"#1e3a5f",borderRadius:10,padding:"8px 12px",fontSize:18 }}>📊</div>
         <div>
@@ -681,18 +636,15 @@ const Reports = () => {
       </div>
       <div style={{ marginBottom:16 }}><RoleBadge/></div>
 
-      {/* Toast */}
       {showToast&&(
         <div style={{ position:"fixed",top:20,right:20,zIndex:99999,background:toastColors[showToast.type]?.bg,color:toastColors[showToast.type]?.color,border:`1px solid ${toastColors[showToast.type]?.border}`,borderRadius:10,padding:"12px 20px",fontSize:14,fontWeight:500,boxShadow:"0 8px 24px rgba(0,0,0,0.12)",animation:"slideUp 0.2s ease",maxWidth:320 }}>
           {showToast.msg}
         </div>
       )}
 
-      {/* Filter Card */}
       <div style={{ background:"#fff",borderRadius:14,padding:20,boxShadow:"0 2px 12px rgba(0,0,0,0.07)",marginBottom:20,border:"1px solid #e2e8f0" }}>
         <div style={{ fontSize:12,fontWeight:700,color:"#94a3b8",marginBottom:14,letterSpacing:"0.5px" }}>FILTER OPTIONS</div>
         <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,alignItems:"end" }}>
-
           <div>
             <div style={{ fontSize:11,fontWeight:600,color:"#94a3b8",marginBottom:4,letterSpacing:"0.5px" }}>DEPARTMENT</div>
             {roleInfo.allowedDepts.length>1?(
@@ -704,7 +656,6 @@ const Reports = () => {
               <div className="readonly-pill" style={{ color:deptCfg.color }}>{deptCfg.emoji} {department||"—"}</div>
             )}
           </div>
-
           <div>
             <div style={{ fontSize:11,fontWeight:600,color:"#94a3b8",marginBottom:4,letterSpacing:"0.5px" }}>YEAR</div>
             {allowedYears.length===1?(
@@ -716,10 +667,8 @@ const Reports = () => {
               </select>
             )}
           </div>
-
           <CalendarPopover label="FROM DATE" value={fromDate} onChange={val=>handleSmartDate("from",val)} fromDate={fromDate} toDate={toDate}/>
           <CalendarPopover label="TO DATE"   value={toDate}   onChange={val=>handleSmartDate("to",val)}   fromDate={fromDate} toDate={toDate}/>
-
           <div>
             <div style={{ fontSize:11,fontWeight:600,color:"transparent",marginBottom:4 }}>.</div>
             <button className="act-btn" onClick={calculateReport} disabled={loading} style={{ background:"#1e3a5f",color:"#fff",width:"100%",height:38 }}>
@@ -727,7 +676,6 @@ const Reports = () => {
             </button>
           </div>
         </div>
-
         {workingDays!==null&&(
           <div style={{ marginTop:14,display:"flex",gap:10,flexWrap:"wrap" }}>
             <div style={{ background:"#eff6ff",borderRadius:8,padding:"6px 14px",fontSize:13,color:"#1d4ed8",fontWeight:500,display:"inline-flex",alignItems:"center",gap:6 }}>📅 Working Days: <strong>{workingDays}</strong></div>
@@ -736,10 +684,8 @@ const Reports = () => {
         )}
       </div>
 
-      {/* Report Section */}
       {showReport&&(
         <>
-          {/* Summary Stats */}
           <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginBottom:16 }}>
             {[
               {label:"Total Students",   val:report.length,    color:"#2563eb",bg:"#eff6ff"},
@@ -753,24 +699,16 @@ const Reports = () => {
               </div>
             ))}
           </div>
-
-          {/* ── Subject chips ── */}
           {uniqueSubjects.length>0&&(
             <div style={{ background:"#fff",border:"1px solid #e2e8f0",borderRadius:12,padding:"14px 16px",marginBottom:16 }}>
-              <div style={{ fontSize:12,fontWeight:700,color:"#94a3b8",marginBottom:10,letterSpacing:"0.5px" }}>
-                📚 SUBJECT-WISE REPORT — click any subject to view its detailed attendance
-              </div>
+              <div style={{ fontSize:12,fontWeight:700,color:"#94a3b8",marginBottom:10,letterSpacing:"0.5px" }}>📚 SUBJECT-WISE REPORT — click any subject to view its detailed attendance</div>
               <div style={{ display:"flex",flexWrap:"wrap",gap:8 }}>
                 {uniqueSubjects.map(subj=>(
-                  <button key={subj} className="subj-chip" onClick={()=>setSubjectFilter(subj)}>
-                    📖 {subj}
-                  </button>
+                  <button key={subj} className="subj-chip" onClick={()=>setSubjectFilter(subj)}>📖 {subj}</button>
                 ))}
               </div>
             </div>
           )}
-
-          {/* Toolbar */}
           <div style={{ display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center" }}>
             <input placeholder="🔍  Search by name or roll no..." value={search} onChange={e=>setSearch(e.target.value)} style={{ flex:1,minWidth:180,height:36,border:"1px solid #cbd5e1",borderRadius:8,padding:"0 12px",fontSize:13,background:"#f8fafc" }}/>
             <button className="act-btn" onClick={()=>setShowDefaulters(!showDefaulters)} style={{ background:showDefaulters?"#dc2626":"#fef2f2",color:showDefaulters?"#fff":"#dc2626" }}>
@@ -779,12 +717,9 @@ const Reports = () => {
             <button className="act-btn" onClick={exportPDF}   style={{ background:"#dc2626",color:"#fff" }}>📄 PDF</button>
             <button className="act-btn" onClick={exportExcel} style={{ background:"#16a34a",color:"#fff" }}>📊 Excel</button>
           </div>
-
           <div style={{ fontWeight:600,fontSize:13,color:"#475569",marginBottom:10 }}>
             {deptCfg.emoji} {department} Dept — {YEAR_LABELS[year]} — {displayData.length} students
           </div>
-
-          {/* Student Cards */}
           <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
             {displayData.map((r,i)=>{
               const p=Number(r.percentage);
@@ -814,31 +749,11 @@ const Reports = () => {
         </>
       )}
 
-      {/* Student Modal */}
       {selectedStudent&&(
-        <StudentModal
-          student={selectedStudent}
-          onClose={()=>setSelectedStudent(null)}
-          department={department}
-          year={year}
-          fromDate={fromDate}
-          toDate={toDate}
-          rawRecords={rawRecords}
-        />
+        <StudentModal student={selectedStudent} onClose={()=>setSelectedStudent(null)} department={department} year={year} fromDate={fromDate} toDate={toDate} rawRecords={rawRecords}/>
       )}
-
-      {/* Subject Report Modal */}
       {subjectFilter&&(
-        <SubjectReport
-          rawRecords={rawRecords}
-          subject={subjectFilter}
-          department={department}
-          year={year}
-          fromDate={fromDate}
-          toDate={toDate}
-          workingDays={workingDays}
-          onClose={()=>setSubjectFilter(null)}
-        />
+        <SubjectReport rawRecords={rawRecords} subject={subjectFilter} department={department} year={year} fromDate={fromDate} toDate={toDate} workingDays={workingDays} onClose={()=>setSubjectFilter(null)}/>
       )}
     </div>
   );

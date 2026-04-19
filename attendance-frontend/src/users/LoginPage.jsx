@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import axios from "axios";
+import BASE_URL from "./config"; // ✅ adjust path if needed
 
 function LoginPage() {
   const [username, setUsername] = useState("");
@@ -18,7 +19,7 @@ function LoginPage() {
 
     try {
       const res = await axios.post(
-        "http://localhost:3001/api/auth/login",
+        `${BASE_URL}/api/auth/login`, // ✅ FIXED
         { username, password, role }
       );
       console.log("LOGIN RESPONSE:", res.data);
@@ -29,14 +30,13 @@ function LoginPage() {
       if (res.data.msg === "Login Successful") {
         const userRole = res.data.user.role?.toLowerCase();
 
-        // ✅ Save full user object (includes subjects for staff)
         localStorage.setItem(
           "user",
           JSON.stringify({
             username:   res.data.user.username,
             role:       res.data.user.role,
             department: res.data.user.department,
-            subjects:   res.data.user.subjects || [], // ✅ FIXED
+            subjects:   res.data.user.subjects || [],
           })
         );
 
@@ -58,14 +58,13 @@ function LoginPage() {
           }
 
           else if (userRole === "staff") {
-            // ✅ FIXED — subjects இப்போ save ஆகுது!
             localStorage.setItem(
               "staffData",
               JSON.stringify({
                 username:   res.data.user.username,
                 role:       res.data.user.role,
                 department: res.data.user.department,
-                subjects:   res.data.user.subjects || [], // ✅ KEY FIX
+                subjects:   res.data.user.subjects || [],
               })
             );
             navigate("/dashboard-staff");
