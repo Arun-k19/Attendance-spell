@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Papa from "papaparse";
 
-const API = "https://attendance-spell.onrender.com/api/students";
+const API = "https://attendance-spell.onrender.com/students";
 
 const DEPT_CONFIG = {
   CSE:   { emoji: "💻", color: "#2563eb", bg: "#eff6ff" },

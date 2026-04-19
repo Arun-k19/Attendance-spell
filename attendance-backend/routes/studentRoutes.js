@@ -17,7 +17,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 /* =============================
-   📥 CSV UPLOAD (FIXED 🔥)
+   📥 CSV UPLOAD
 ============================= */
 router.post("/upload", upload.single("file"), async (req, res) => {
   try {
@@ -33,7 +33,6 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       return res.status(400).json({ msg: "❌ Empty CSV file" });
     }
 
-    // 🔥 normalize headers
     const normalize = (obj) => {
       const newObj = {};
       for (let key in obj) {
@@ -42,10 +41,8 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       return newObj;
     };
 
-    // 🔥 map data safely
     const formattedData = jsonArray.map((row) => {
       const data = normalize(row);
-
       return {
         regNo:
           data["regno"] ||
@@ -60,7 +57,6 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       };
     });
 
-    // 🔥 filter valid
     const validStudents = formattedData.filter(
       (s) => s.regNo && s.name && s.dept && s.year
     );
@@ -72,9 +68,7 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       });
     }
 
-    // 🔥 insert (ignore duplicates safely)
     await Student.insertMany(validStudents, { ordered: false });
-
     fs.unlinkSync(filePath);
 
     res.json({
@@ -84,23 +78,17 @@ router.post("/upload", upload.single("file"), async (req, res) => {
 
   } catch (err) {
     console.error("❌ CSV Upload Error:", err);
-
-    // 🔥 DUPLICATE ERROR HANDLE (NEW)
     if (err.code === 11000) {
       return res.status(400).json({
         msg: "⚠️ Some students already exist (duplicate regNo)"
       });
     }
-
-    res.status(500).json({
-      msg: "Upload failed",
-      error: err.message,
-    });
+    res.status(500).json({ msg: "Upload failed", error: err.message });
   }
 });
 
 /* =============================
-   GET STUDENTS
+   GET ALL STUDENTS
 ============================= */
 router.get("/", async (req, res) => {
   try {
@@ -127,24 +115,41 @@ router.post("/add", async (req, res) => {
       return res.status(400).json({ msg: "Student exists" });
     }
 
-    const student = new Student({
-      regNo,
-      name,
-      dept,
-      year,
-    });
-
+    const student = new Student({ regNo, name, dept, year });
     await student.save();
 
     res.json({ msg: "Student added", student });
-
   } catch {
     res.status(500).json({ msg: "Add failed" });
   }
 });
 
 /* =============================
-   DELETE
+   ✏️ UPDATE STUDENT — 404 fix
+============================= */
+router.put("/:regNo", async (req, res) => {
+  try {
+    const { regNo } = req.params;
+    const { name, dept, year, attendance } = req.body;
+
+    const updated = await Student.findOneAndUpdate(
+      { regNo },
+      { name, dept, year, attendance },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ msg: "Student not found" });
+    }
+
+    res.json({ msg: "Student updated", student: updated });
+  } catch {
+    res.status(500).json({ msg: "Update failed" });
+  }
+});
+
+/* =============================
+   ❌ DELETE STUDENT
 ============================= */
 router.delete("/:regNo", async (req, res) => {
   try {
