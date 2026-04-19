@@ -138,9 +138,9 @@ function LoginPage() {
               style={{ backgroundColor: "rgba(255,255,255,0.85)", borderRadius: "12px" }}
             >
               <option value="">Select Role</option>
-              <option>Admin</option>
-              <option>HOD</option>
-              <option>Staff</option>
+              <option>admin</option>
+              <option>hod</option>
+              <option>staff</option>
             </select>
           </div>
 
