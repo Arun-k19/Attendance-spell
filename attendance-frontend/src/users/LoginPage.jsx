@@ -4,7 +4,6 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import axios from "axios";
 import BASE_URL from "../config";
 
-// 🔥 Icons
 import {
   FaUser,
   FaLock,
@@ -102,10 +101,8 @@ function LoginPage() {
       <div
         style={{
           position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
+          top: 0, left: 0,
+          width: "100%", height: "100%",
           backgroundColor: "rgba(0, 0, 0, 0.6)",
           zIndex: 1,
         }}
@@ -139,16 +136,12 @@ function LoginPage() {
           {/* Role Dropdown */}
           <div className="mb-3 position-relative">
             <FaUserShield className="position-absolute top-50 start-0 translate-middle-y ms-3 text-primary" />
-
             <select
               className="form-select form-select-lg ps-5"
               value={role}
               onChange={(e) => setRole(e.target.value)}
               required
-              style={{
-                backgroundColor: "rgba(255,255,255,0.9)",
-                borderRadius: "12px",
-              }}
+              style={{ backgroundColor: "rgba(255,255,255,0.9)", borderRadius: "12px" }}
             >
               <option value="">Select Role</option>
               <option value="admin">👑 Admin</option>
@@ -160,7 +153,6 @@ function LoginPage() {
           {/* Username */}
           <div className="mb-3 position-relative">
             <FaUser className="position-absolute top-50 start-0 translate-middle-y ms-3 text-secondary" />
-
             <input
               type="text"
               className="form-control form-control-lg ps-5"
@@ -168,17 +160,13 @@ function LoginPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
-              style={{
-                backgroundColor: "rgba(255,255,255,0.9)",
-                borderRadius: "12px",
-              }}
+              style={{ backgroundColor: "rgba(255,255,255,0.9)", borderRadius: "12px" }}
             />
           </div>
 
           {/* Password */}
           <div className="mb-4 position-relative">
             <FaLock className="position-absolute top-50 start-0 translate-middle-y ms-3 text-secondary" />
-
             <input
               type={showPassword ? "text" : "password"}
               className="form-control form-control-lg ps-5 pe-5"
@@ -186,12 +174,8 @@ function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              style={{
-                backgroundColor: "rgba(255,255,255,0.9)",
-                borderRadius: "12px",
-              }}
+              style={{ backgroundColor: "rgba(255,255,255,0.9)", borderRadius: "12px" }}
             />
-
             <span
               onClick={() => setShowPassword(!showPassword)}
               className="position-absolute top-50 end-0 translate-middle-y me-3"
@@ -214,14 +198,23 @@ function LoginPage() {
           </button>
         </form>
 
+        {/* ✅ Copyright */}
+        <p style={{
+          marginTop: "24px",
+          marginBottom: 0,
+          fontSize: "12px",
+          color: "rgba(255,255,255,0.45)",
+          letterSpacing: "0.3px",
+        }}>
+          © {new Date().getFullYear()} Chendhuran College of Engineering & Technology. Designed & Developed by Team 2026.
+        </p>
+
         {/* Toast */}
         {toastMsg && (
           <div
             className="toast show position-absolute start-50 translate-middle-x mt-3"
             style={{
-              background: toastMsg.includes("Invalid")
-                ? "#dc3545"
-                : "#28a745",
+              background: toastMsg.includes("Invalid") ? "#dc3545" : "#28a745",
               padding: "10px 20px",
               borderRadius: "12px",
               color: "#fff",
@@ -233,20 +226,17 @@ function LoginPage() {
         )}
       </div>
 
-      {/* Animations + Focus Effects */}
       <style>{`
         @keyframes floatUp {
           0%   { transform: translateY(30px); opacity: 0; }
           100% { transform: translateY(0); opacity: 1; }
         }
-
         .form-control:focus,
         .form-select:focus {
           box-shadow: 0 0 10px rgba(99, 102, 241, 0.6);
           border-color: #6366f1;
           transition: 0.3s;
         }
-
         button:hover {
           transform: scale(1.02);
         }
