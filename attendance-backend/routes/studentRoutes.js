@@ -3,6 +3,7 @@ import multer from "multer";
 import csv from "csvtojson";
 import fs from "fs";
 import Student from "../models/Student.js";
+import XLSX from "xlsx";
 
 const router = express.Router();
 
@@ -17,7 +18,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 /* =============================
-   📥 CSV UPLOAD
+   📥 CSV + EXCEL UPLOAD (FINAL 🔥)
 ============================= */
 router.post("/upload", upload.single("file"), async (req, res) => {
   try {
@@ -26,13 +27,35 @@ router.post("/upload", upload.single("file"), async (req, res) => {
     }
 
     const filePath = req.file.path;
-    const jsonArray = await csv().fromFile(filePath);
+    let jsonArray = [];
+
+    // 🔥 FILE TYPE CHECK
+    if (req.file.originalname.endsWith(".csv")) {
+      jsonArray = await csv().fromFile(filePath);
+
+    } else if (
+      req.file.originalname.endsWith(".xlsx") ||
+      req.file.originalname.endsWith(".xls")
+    ) {
+      const workbook = XLSX.readFile(filePath);
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+
+      jsonArray = XLSX.utils.sheet_to_json(sheet);
+
+    } else {
+      fs.unlinkSync(filePath);
+      return res.status(400).json({
+        msg: "❌ Only CSV or Excel files allowed",
+      });
+    }
 
     if (!jsonArray.length) {
       fs.unlinkSync(filePath);
-      return res.status(400).json({ msg: "❌ Empty CSV file" });
+      return res.status(400).json({ msg: "❌ File is empty" });
     }
 
+    // 🔥 normalize headers
     const normalize = (obj) => {
       const newObj = {};
       for (let key in obj) {
@@ -41,18 +64,40 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       return newObj;
     };
 
+    // 🔥 FINAL MAPPING (handles ALL formats)
     const formattedData = jsonArray.map((row) => {
       const data = normalize(row);
+
       return {
         regNo:
           data["regno"] ||
           data["reg no"] ||
           data["register no"] ||
           data["id"] ||
+          data["reg_no"] ||
+          data["register"] ||
           "",
-        name: data["name"] || "",
-        dept: (data["dept"] || data["department"] || "").toUpperCase(),
-        year: data["year"] || "",
+
+        name:
+          data["name"] ||
+          data["student name"] ||
+          data["student"] ||
+          "",
+
+        dept: (
+          data["dept"] ||
+          data["department"] ||
+          data["dept "] ||
+          data[" department"] ||
+          data["branch"]
+        )?.toString().trim().toUpperCase() || "",
+
+        year:
+          data["year"] ||
+          data["yr"] ||
+          data["year "] ||
+          "",
+
         attendance: Number(data["attendance"] || 0),
       };
     });
@@ -64,11 +109,13 @@ router.post("/upload", upload.single("file"), async (req, res) => {
     if (!validStudents.length) {
       fs.unlinkSync(filePath);
       return res.status(400).json({
-        msg: "❌ CSV format wrong (need regNo, name, dept, year)",
+        msg: "❌ File format wrong (need regNo, name, dept, year)",
       });
     }
 
+    // 🔥 insert (skip duplicates)
     await Student.insertMany(validStudents, { ordered: false });
+
     fs.unlinkSync(filePath);
 
     res.json({
@@ -77,13 +124,18 @@ router.post("/upload", upload.single("file"), async (req, res) => {
     });
 
   } catch (err) {
-    console.error("❌ CSV Upload Error:", err);
+    console.error("❌ Upload Error:", err);
+
     if (err.code === 11000) {
       return res.status(400).json({
-        msg: "⚠️ Some students already exist (duplicate regNo)"
+        msg: "⚠️ Some students already exist (duplicate regNo)",
       });
     }
-    res.status(500).json({ msg: "Upload failed", error: err.message });
+
+    res.status(500).json({
+      msg: "Upload failed",
+      error: err.message,
+    });
   }
 });
 
@@ -125,7 +177,7 @@ router.post("/add", async (req, res) => {
 });
 
 /* =============================
-   ✏️ UPDATE STUDENT — 404 fix
+   ✏️ UPDATE STUDENT (FIXED)
 ============================= */
 router.put("/:regNo", async (req, res) => {
   try {
@@ -133,7 +185,7 @@ router.put("/:regNo", async (req, res) => {
     const { name, dept, year, attendance } = req.body;
 
     const updated = await Student.findOneAndUpdate(
-      { regNo },
+      { regNo: new RegExp(`^${regNo}$`, "i") }, // 🔥 case insensitive
       { name, dept, year, attendance },
       { new: true }
     );
@@ -153,7 +205,9 @@ router.put("/:regNo", async (req, res) => {
 ============================= */
 router.delete("/:regNo", async (req, res) => {
   try {
-    await Student.findOneAndDelete({ regNo: req.params.regNo });
+    await Student.findOneAndDelete({
+      regNo: new RegExp(`^${req.params.regNo}$`, "i"),
+    });
     res.json({ msg: "Deleted" });
   } catch {
     res.status(500).json({ msg: "Delete failed" });

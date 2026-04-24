@@ -166,7 +166,12 @@ export default function ManageStudents() {
         </div>
         <div className="d-flex gap-2 flex-wrap">
           <div className="input-group" style={{ width: "230px" }}>
-            <input type="file" accept=".csv" className="form-control form-control-sm" onChange={handleFileChange} />
+            <input 
+              type="file" 
+              accept=".csv, .xlsx, .xls" 
+              className="form-control form-control-sm" 
+              onChange={handleFileChange} 
+            />
             <button className="btn btn-outline-primary btn-sm" onClick={handleUpload}>📤</button>
           </div>
           <button
