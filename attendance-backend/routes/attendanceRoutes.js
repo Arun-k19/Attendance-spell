@@ -40,8 +40,8 @@ router.post("/save", async (req, res) => {
       year,
       period,
       subject,
-      markedBy:  markedBy || "",   // ✅ staff username
-      markedAt:  new Date(),       // ✅ current time
+      markedBy:  markedBy || "",
+      markedAt:  new Date(),
       attendance: mapped,
     });
 
@@ -53,15 +53,20 @@ router.post("/save", async (req, res) => {
   }
 });
 
-// VIEW ATTENDANCE
+// VIEW ATTENDANCE — ✅ FIXED: year இல்லாம வந்தாலும் crash ஆகாது
 router.get("/view", async (req, res) => {
   try {
     const { date, department, year, period } = req.query;
 
-    const query = {
-      department,
-      year: Number(year),
-    };
+    const query = {};
+
+    // ✅ department இருந்தா மட்டும் add பண்ணு
+    if (department) query.department = department;
+
+    // ✅ year இருந்தா மட்டும் add பண்ணு — NaN check
+    if (year !== undefined && year !== "" && !isNaN(Number(year))) {
+      query.year = Number(year);
+    }
 
     if (date) {
       const start = new Date(date);
@@ -71,7 +76,7 @@ router.get("/view", async (req, res) => {
       query.date = { $gte: start, $lte: end };
     }
 
-    if (period) {
+    if (period !== undefined && period !== "" && !isNaN(Number(period))) {
       query.period = Number(period);
     }
 
