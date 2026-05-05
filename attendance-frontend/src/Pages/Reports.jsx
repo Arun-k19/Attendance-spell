@@ -26,6 +26,7 @@ const HOLIDAYS = [
 ];
 const HOLIDAY_MAP = Object.fromEntries(HOLIDAYS.map(h => [h.date, h.name]));
 const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const DAY_SHORT   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
 const DEPT_CONFIG = {
   CSE:   { emoji: "💻", color: "#2563eb" },
@@ -52,14 +53,11 @@ const getRoleInfo = () => {
     return { role:"hod", allowedDepts: dept?[dept]:ALL_DEPTS, allowedYearsByDept:null, staffSubjects:null };
   }
 
-  // ── STAFF ──────────────────────────────────────────────
   const subjects    = staffData?.subjects || userData?.subjects || [];
   const primaryDept = staffData?.department || userData?.department || "";
-
-  // staffSubjects: ["aiml", "maths", "dsa"] — lowercase for comparison
   const staffSubjects = subjects.length
     ? subjects.map(s => (s.name || "").toLowerCase()).filter(Boolean)
-    : null; // null = no filter (show all)
+    : null;
 
   if (!subjects.length) {
     return {
@@ -200,7 +198,6 @@ const StudentModal = ({ student, onClose, department, year, fromDate, toDate, ra
   const subjectMap = {};
   rawRecords.forEach(rec => {
     const subj  = rec.subject || "Unknown";
-    // ── Staff: only show their subjects ──
     if (staffSubjects && !staffSubjects.includes(subj.toLowerCase())) return;
     const entry = rec.attendance?.find(a => a.studentId?.regNo === student.roll);
     if (!entry) return;
@@ -471,6 +468,324 @@ const SubjectReport = ({ rawRecords, subject, department, year, fromDate, toDate
   );
 };
 
+// ─── REGISTER VIEW (Excel-style) ─────────────────────────────────────
+const RegisterView = ({ rawRecords, report, department, year, fromDate, toDate, staffSubjects }) => {
+  const [search, setSearch] = useState("");
+  const [highlightAbsent, setHighlightAbsent] = useState(true);
+
+  // Build date → [{subject, period, recordIndex}] map
+  const dateMap = {};
+  rawRecords.forEach((rec, ri) => {
+    if (!rec.date) return;
+    const subj = rec.subject || "Unknown";
+    if (staffSubjects && !staffSubjects.includes(subj.toLowerCase())) return;
+    const ds = rec.date.slice(0, 10);
+    if (!dateMap[ds]) dateMap[ds] = [];
+    dateMap[ds].push({ subject: subj, period: rec.period || 1, recIdx: ri });
+  });
+
+  // Sort dates ascending
+  const sortedDates = Object.keys(dateMap).sort();
+
+  // Build columns: [{date, subject, period, recIdx}]
+  const columns = [];
+  sortedDates.forEach(ds => {
+    const cols = dateMap[ds].slice().sort((a, b) => a.period - b.period);
+    cols.forEach(c => columns.push({ date: ds, ...c }));
+  });
+
+  // Group columns by date for header spanning
+  const dateGroups = [];
+  let cur = null;
+  columns.forEach((col, ci) => {
+    if (!cur || cur.date !== col.date) {
+      cur = { date: col.date, start: ci, count: 1 };
+      dateGroups.push(cur);
+    } else {
+      cur.count++;
+    }
+  });
+
+  // All students sorted by roll
+  const allStudents = report.slice().sort((a, b) => (a.roll || "").localeCompare(b.roll || ""));
+  const filtered = allStudents.filter(s =>
+    s.name?.toLowerCase().includes(search.toLowerCase()) ||
+    s.roll?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  // Build attendance lookup: roll → recIdx → status
+  const attendanceLookup = {};
+  rawRecords.forEach((rec, ri) => {
+    rec.attendance?.forEach(a => {
+      const roll = a.studentId?.regNo;
+      if (!roll) return;
+      if (!attendanceLookup[roll]) attendanceLookup[roll] = {};
+      attendanceLookup[roll][ri] = a.status;
+    });
+  });
+
+  // Export register as Excel
+  const exportRegisterExcel = () => {
+    const header1 = ["S.No", "Roll No", "Name"];
+    const header2 = ["", "", ""];
+    const header3 = ["", "", ""];
+
+    dateGroups.forEach(dg => {
+      const d = new Date(dg.date);
+      const label = `${DAY_SHORT[d.getDay()]} ${d.getDate().toString().padStart(2,"0")}.${(d.getMonth()+1).toString().padStart(2,"0")}.${d.getFullYear()}`;
+      for (let i = 0; i < dg.count; i++) {
+        header1.push(i === 0 ? label : "");
+        const col = columns[dg.start + i];
+        header2.push(`P${col.period}`);
+        header3.push(col.subject);
+      }
+    });
+    header1.push("Present", "Absent", "Total", "%");
+    header2.push("", "", "", "");
+    header3.push("", "", "", "");
+
+    const rows = [header1, header2, header3];
+    allStudents.forEach((s, i) => {
+      const row = [i + 1, s.roll, s.name];
+      columns.forEach(col => {
+        const status = attendanceLookup[s.roll]?.[col.recIdx];
+        row.push(status === "Present" ? "P" : status === "Absent" ? "A" : "");
+      });
+      row.push(s.present, s.absent, s.total, s.percentage + "%");
+      rows.push(row);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Register");
+    XLSX.writeFile(wb, `Register_${department}_Year${year}_${fromDate}_${toDate}.xlsx`);
+  };
+
+  // Color cycling for date headers
+  const DATE_COLORS = [
+    { bg:"#1e3a5f", text:"#fff" },
+    { bg:"#0891b2", text:"#fff" },
+    { bg:"#7c3aed", text:"#fff" },
+    { bg:"#b45309", text:"#fff" },
+    { bg:"#15803d", text:"#fff" },
+    { bg:"#dc2626", text:"#fff" },
+  ];
+
+  const NAME_COL_W = 160;
+  const ROLL_COL_W = 120;
+  const SNO_COL_W  = 44;
+  const CELL_W     = 48;
+  const TOTAL_COLS = 4; // Present, Absent, Total, %
+
+  return (
+    <div style={{ background:"#fff",borderRadius:14,border:"1px solid #e2e8f0",overflow:"hidden" }}>
+      {/* Toolbar */}
+      <div style={{ padding:"14px 16px",borderBottom:"1px solid #f1f5f9",display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",background:"#f8fafc" }}>
+        <div style={{ fontWeight:700,fontSize:14,color:"#1e3a5f",flex:1 }}>
+          📋 Register View — {department} {YEAR_LABELS[year]}
+        </div>
+        <input
+          placeholder="🔍 Search student..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{ height:34,border:"1px solid #cbd5e1",borderRadius:8,padding:"0 12px",fontSize:13,background:"#fff",width:180 }}
+        />
+        <button
+          onClick={() => setHighlightAbsent(h => !h)}
+          style={{ border:"none",borderRadius:8,height:34,padding:"0 14px",fontSize:12,fontWeight:600,cursor:"pointer",
+            background:highlightAbsent?"#fef2f2":"#f1f5f9",color:highlightAbsent?"#dc2626":"#64748b" }}
+        >
+          {highlightAbsent ? "🔴 Absent Highlighted" : "Highlight Absent"}
+        </button>
+        <button
+          onClick={exportRegisterExcel}
+          style={{ border:"none",borderRadius:8,height:34,padding:"0 14px",fontSize:12,fontWeight:600,cursor:"pointer",background:"#16a34a",color:"#fff" }}
+        >
+          📊 Export Excel
+        </button>
+      </div>
+
+      {/* Scrollable register table */}
+      <div style={{ overflowX:"auto", overflowY:"auto", maxHeight:"70vh" }}>
+        <table style={{ borderCollapse:"collapse", fontSize:12, minWidth:"100%", tableLayout:"fixed" }}>
+          {/* Col widths */}
+          <colgroup>
+            <col style={{ width: SNO_COL_W }}/>
+            <col style={{ width: ROLL_COL_W }}/>
+            <col style={{ width: NAME_COL_W }}/>
+            {columns.map((_, ci) => <col key={ci} style={{ width: CELL_W }}/>)}
+            {["Present","Absent","Total","%"].map(h => <col key={h} style={{ width: CELL_W + 4 }}/>)}
+          </colgroup>
+
+          <thead style={{ position:"sticky", top:0, zIndex:10 }}>
+            {/* Row 1: S.No, Roll, Name, Date groups, Totals */}
+            <tr>
+              <th rowSpan={3} style={{ ...thStyle, width:SNO_COL_W, background:"#1e3a5f", color:"#fff", position:"sticky", left:0, zIndex:20 }}>#</th>
+              <th rowSpan={3} style={{ ...thStyle, width:ROLL_COL_W, background:"#1e3a5f", color:"#fff", position:"sticky", left:SNO_COL_W, zIndex:20 }}>Roll No</th>
+              <th rowSpan={3} style={{ ...thStyle, width:NAME_COL_W, background:"#1e3a5f", color:"#fff", textAlign:"left", padding:"6px 10px", position:"sticky", left:SNO_COL_W+ROLL_COL_W, zIndex:20 }}>Name</th>
+              {dateGroups.map((dg, di) => {
+                const d = new Date(dg.date);
+                const col = DATE_COLORS[di % DATE_COLORS.length];
+                const dayLabel = DAY_SHORT[d.getDay()];
+                const dateStr  = `${d.getDate().toString().padStart(2,"0")}.${(d.getMonth()+1).toString().padStart(2,"0")}.${d.getFullYear()}`;
+                return (
+                  <th key={dg.date} colSpan={dg.count}
+                    style={{ ...thStyle, background:col.bg, color:col.text, borderLeft:"2px solid rgba(255,255,255,0.3)" }}>
+                    <div style={{ fontSize:11, fontWeight:700 }}>{dayLabel}</div>
+                    <div style={{ fontSize:10, opacity:0.85 }}>{dateStr}</div>
+                  </th>
+                );
+              })}
+              <th colSpan={4} style={{ ...thStyle, background:"#374151", color:"#fff" }}>Summary</th>
+            </tr>
+            {/* Row 2: Period numbers */}
+            <tr>
+              {columns.map((col, ci) => {
+                const dgi = dateGroups.findIndex(dg => dg.date === col.date);
+                const isFirst = dateGroups[dgi]?.start === ci;
+                return (
+                  <th key={ci} style={{ ...thStyle, background:"#334155", color:"#e2e8f0", fontSize:10, borderLeft:isFirst?"2px solid rgba(255,255,255,0.2)":"none" }}>
+                    P{col.period}
+                  </th>
+                );
+              })}
+              {["Present","Absent","Total","%"].map(h => (
+                <th key={h} style={{ ...thStyle, background:"#334155", color:"#e2e8f0", fontSize:10 }}>{h}</th>
+              ))}
+            </tr>
+            {/* Row 3: Subject names */}
+            <tr>
+              {columns.map((col, ci) => {
+                const dgi = dateGroups.findIndex(dg => dg.date === col.date);
+                const isFirst = dateGroups[dgi]?.start === ci;
+                return (
+                  <th key={ci} style={{ ...thStyle, background:"#475569", color:"#f1f5f9", fontSize:10, fontWeight:500, borderLeft:isFirst?"2px solid rgba(255,255,255,0.15)":"none", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:CELL_W }}>
+                    {col.subject}
+                  </th>
+                );
+              })}
+              {["","","",""].map((_, i) => (
+                <th key={i} style={{ ...thStyle, background:"#475569" }}></th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={3 + columns.length + 4} style={{ textAlign:"center", padding:40, color:"#94a3b8" }}>
+                  No students found
+                </td>
+              </tr>
+            ) : (
+              filtered.map((s, si) => {
+                const pct = Number(s.percentage);
+                const pctColor = pct >= 75 ? "#16a34a" : pct >= 60 ? "#d97706" : "#dc2626";
+                const rowBg = si % 2 === 0 ? "#ffffff" : "#f8fafc";
+                return (
+                  <tr key={s.roll} style={{ background:rowBg }}>
+                    {/* S.No */}
+                    <td style={{ ...tdStyle, textAlign:"center", color:"#94a3b8", position:"sticky", left:0, background:rowBg, zIndex:5 }}>{si+1}</td>
+                    {/* Roll */}
+                    <td style={{ ...tdStyle, fontWeight:500, color:"#475569", fontSize:11, position:"sticky", left:SNO_COL_W, background:rowBg, zIndex:5 }}>{s.roll}</td>
+                    {/* Name */}
+                    <td style={{ ...tdStyle, textAlign:"left", padding:"6px 10px", fontWeight:600, color:"#1e293b", position:"sticky", left:SNO_COL_W+ROLL_COL_W, background:rowBg, zIndex:5, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:NAME_COL_W }}>{s.name}</td>
+                    {/* Attendance cells */}
+                    {columns.map((col, ci) => {
+                      const status = attendanceLookup[s.roll]?.[col.recIdx];
+                      const isPresent = status === "Present";
+                      const isAbsent  = status === "Absent";
+                      const dgi = dateGroups.findIndex(dg => dg.date === col.date);
+                      const isFirst = dateGroups[dgi]?.start === ci;
+                      let cellBg = rowBg;
+                      let cellColor = "#94a3b8";
+                      let cellText = "—";
+                      if (isPresent) { cellBg = "#f0fdf4"; cellColor = "#16a34a"; cellText = "P"; }
+                      else if (isAbsent && highlightAbsent) { cellBg = "#fef2f2"; cellColor = "#dc2626"; cellText = "A"; }
+                      else if (isAbsent) { cellColor = "#dc2626"; cellText = "A"; }
+                      return (
+                        <td key={ci} style={{ ...tdStyle, background:cellBg, color:cellColor, fontWeight:isPresent||isAbsent?700:400, borderLeft:isFirst?"2px solid #e2e8f0":"none" }}>
+                          {cellText}
+                        </td>
+                      );
+                    })}
+                    {/* Summary */}
+                    <td style={{ ...tdStyle, color:"#16a34a", fontWeight:600 }}>{s.present}</td>
+                    <td style={{ ...tdStyle, color:"#dc2626", fontWeight:600 }}>{s.absent}</td>
+                    <td style={{ ...tdStyle, color:"#475569", fontWeight:600 }}>{s.total}</td>
+                    <td style={{ ...tdStyle }}>
+                      <span style={{ background:pctColor+"18", color:pctColor, borderRadius:4, padding:"2px 6px", fontWeight:700, fontSize:11 }}>{pct}%</span>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+
+          {/* Footer row: column totals */}
+          {filtered.length > 0 && (
+            <tfoot>
+              <tr style={{ background:"#1e3a5f", color:"#fff" }}>
+                <td colSpan={3} style={{ ...tdStyle, color:"#fff", fontWeight:700, textAlign:"right", position:"sticky", left:0, background:"#1e3a5f", zIndex:5 }}>
+                  Column Total →
+                </td>
+                {columns.map((col, ci) => {
+                  const total = filtered.filter(s => attendanceLookup[s.roll]?.[col.recIdx] === "Present").length;
+                  const dgi = dateGroups.findIndex(dg => dg.date === col.date);
+                  const isFirst = dateGroups[dgi]?.start === ci;
+                  return (
+                    <td key={ci} style={{ ...tdStyle, color:"#fff", fontWeight:700, background:"#1e3a5f", borderLeft:isFirst?"2px solid rgba(255,255,255,0.2)":"none" }}>
+                      {total}
+                    </td>
+                  );
+                })}
+                <td style={{ ...tdStyle, color:"#fff", background:"#1e3a5f" }}></td>
+                <td style={{ ...tdStyle, color:"#fff", background:"#1e3a5f" }}></td>
+                <td style={{ ...tdStyle, color:"#fff", background:"#1e3a5f" }}>{filtered.length}</td>
+                <td style={{ ...tdStyle, color:"#fff", background:"#1e3a5f" }}>
+                  {filtered.length ? (filtered.reduce((a,s)=>a+Number(s.percentage),0)/filtered.length).toFixed(1)+"%" : ""}
+                </td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
+
+      {/* Legend */}
+      <div style={{ padding:"10px 16px",borderTop:"1px solid #f1f5f9",display:"flex",gap:16,flexWrap:"wrap",fontSize:11,color:"#64748b",background:"#f8fafc" }}>
+        {[
+          { bg:"#f0fdf4", border:"#86efac", color:"#15803d", label:"P = Present" },
+          { bg:"#fef2f2", border:"#fca5a5", color:"#dc2626", label:"A = Absent" },
+          { bg:"#f8fafc", border:"#e2e8f0", color:"#94a3b8", label:"— = Not marked" },
+        ].map(l => (
+          <div key={l.label} style={{ display:"flex",alignItems:"center",gap:5 }}>
+            <div style={{ width:14,height:14,borderRadius:3,background:l.bg,border:`1px solid ${l.border}` }}/>
+            <span style={{ color:l.color, fontWeight:500 }}>{l.label}</span>
+          </div>
+        ))}
+        <span>· Scroll horizontally to see all dates</span>
+        <span>· Name column is sticky (pinned left)</span>
+      </div>
+    </div>
+  );
+};
+
+// Table cell styles
+const thStyle = {
+  padding: "6px 4px",
+  textAlign: "center",
+  fontWeight: 700,
+  fontSize: 11,
+  borderBottom: "1px solid rgba(255,255,255,0.1)",
+  whiteSpace: "nowrap",
+};
+const tdStyle = {
+  padding: "5px 4px",
+  textAlign: "center",
+  fontSize: 12,
+  borderBottom: "1px solid #f1f5f9",
+};
+
 // ─── MAIN REPORTS PAGE ───────────────────────────────────────────────
 const Reports = () => {
   const roleInfo = getRoleInfo();
@@ -489,6 +804,7 @@ const Reports = () => {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [subjectFilter,   setSubjectFilter]   = useState(null);
   const [loading,         setLoading]         = useState(false);
+  const [activeTab,       setActiveTab]       = useState("summary"); // "summary" | "register"
 
   useEffect(() => { setToDate(new Date().toISOString().split("T")[0]); }, []);
 
@@ -556,6 +872,7 @@ const Reports = () => {
       });
       setReport(final);
       setShowReport(true);
+      setActiveTab("summary");
     } catch (err) {
       console.error(err);
       showAlert("Error fetching report","danger");
@@ -564,11 +881,10 @@ const Reports = () => {
     }
   };
 
-  // ── KEY FIX: Staff-ku only avan subjects matum chips-la show aagum ──
   const uniqueSubjects = [...new Set(rawRecords.map(r => r.subject).filter(Boolean))]
     .filter(subj => {
-      if (!roleInfo.staffSubjects) return true; // Admin/HOD → all
-      return roleInfo.staffSubjects.includes(subj.toLowerCase()); // Staff → only his subjects
+      if (!roleInfo.staffSubjects) return true;
+      return roleInfo.staffSubjects.includes(subj.toLowerCase());
     })
     .sort();
 
@@ -645,7 +961,7 @@ const Reports = () => {
   };
 
   return (
-    <div style={{ maxWidth:1000,margin:"0 auto",padding:"16px 12px",fontFamily:"system-ui,sans-serif" }}>
+    <div style={{ maxWidth:1100,margin:"0 auto",padding:"16px 12px",fontFamily:"system-ui,sans-serif" }}>
       <style>{`
         @keyframes slideUp { from { transform:translateY(20px);opacity:0 } to { transform:translateY(0);opacity:1 } }
         .stu-card { cursor:pointer;transition:all 0.18s;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;background:#fff;display:flex;justify-content:space-between;align-items:center; }
@@ -656,6 +972,10 @@ const Reports = () => {
         .readonly-pill { height:38px;display:flex;align-items:center;padding:0 12px;border-radius:8px;background:#f1f5f9;font-weight:700;font-size:13px;gap:6px;border:1px solid #e2e8f0; }
         .subj-chip { cursor:pointer;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:600;border:1.5px solid #e2e8f0;background:#f8fafc;color:#475569;transition:all 0.15s;display:inline-flex;align-items:center;gap:5px; }
         .subj-chip:hover { border-color:#7c3aed;background:#f5f3ff;color:#7c3aed; }
+        .tab-btn { border:none;border-radius:8px;padding:0 18px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.15s;height:36px; }
+        .tab-btn.active { background:#1e3a5f;color:#fff;box-shadow:0 2px 8px rgba(30,58,95,0.2); }
+        .tab-btn:not(.active) { background:#f1f5f9;color:#475569; }
+        .tab-btn:not(.active):hover { background:#e2e8f0; }
       `}</style>
 
       <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:6 }}>
@@ -673,6 +993,7 @@ const Reports = () => {
         </div>
       )}
 
+      {/* Filter panel */}
       <div style={{ background:"#fff",borderRadius:14,padding:20,boxShadow:"0 2px 12px rgba(0,0,0,0.07)",marginBottom:20,border:"1px solid #e2e8f0" }}>
         <div style={{ fontSize:12,fontWeight:700,color:"#94a3b8",marginBottom:14,letterSpacing:"0.5px" }}>FILTER OPTIONS</div>
         <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,alignItems:"end" }}>
@@ -717,6 +1038,7 @@ const Reports = () => {
 
       {showReport && (
         <>
+          {/* Summary stats */}
           <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginBottom:16 }}>
             {[
               { label:"Total Students",    val:report.length,    color:"#2563eb", bg:"#eff6ff" },
@@ -731,11 +1053,11 @@ const Reports = () => {
             ))}
           </div>
 
-          {/* ── SUBJECT CHIPS — Staff-ku filtered, Admin/HOD-ku all ── */}
+          {/* Subject chips */}
           {uniqueSubjects.length > 0 && (
             <div style={{ background:"#fff",border:"1px solid #e2e8f0",borderRadius:12,padding:"14px 16px",marginBottom:16 }}>
               <div style={{ fontSize:12,fontWeight:700,color:"#94a3b8",marginBottom:10,letterSpacing:"0.5px" }}>
-                📚 {roleInfo.role === "staff" ? "YOUR SUBJECTS — click to view detailed attendance" : "SUBJECT-WISE REPORT — click any subject to view its detailed attendance"}
+                📚 {roleInfo.role === "staff" ? "YOUR SUBJECTS" : "SUBJECT-WISE REPORT"} — click any subject to view detailed attendance
               </div>
               <div style={{ display:"flex",flexWrap:"wrap",gap:8 }}>
                 {uniqueSubjects.map(subj => (
@@ -745,43 +1067,71 @@ const Reports = () => {
             </div>
           )}
 
-          <div style={{ display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center" }}>
-            <input placeholder="🔍  Search by name or roll no..." value={search} onChange={e => setSearch(e.target.value)} style={{ flex:1,minWidth:180,height:36,border:"1px solid #cbd5e1",borderRadius:8,padding:"0 12px",fontSize:13,background:"#f8fafc" }}/>
-            <button className="act-btn" onClick={() => setShowDefaulters(!showDefaulters)} style={{ background:showDefaulters?"#dc2626":"#fef2f2",color:showDefaulters?"#fff":"#dc2626" }}>
-              {showDefaulters ? "Show All" : `⚠ Defaulters (${defaulters.length})`}
+          {/* TAB SWITCHER */}
+          <div style={{ display:"flex",gap:8,marginBottom:16,alignItems:"center",flexWrap:"wrap" }}>
+            <button className={`tab-btn ${activeTab === "summary" ? "active" : ""}`} onClick={() => setActiveTab("summary")}>
+              📋 Summary View
             </button>
-            <button className="act-btn" onClick={exportPDF}   style={{ background:"#dc2626",color:"#fff" }}>📄 PDF</button>
-            <button className="act-btn" onClick={exportExcel} style={{ background:"#16a34a",color:"#fff" }}>📊 Excel</button>
+            <button className={`tab-btn ${activeTab === "register" ? "active" : ""}`} onClick={() => setActiveTab("register")}>
+              📅 Register View
+            </button>
           </div>
-          <div style={{ fontWeight:600,fontSize:13,color:"#475569",marginBottom:10 }}>
-            {deptCfg.emoji} {department} Dept — {YEAR_LABELS[year]} — {displayData.length} students
-          </div>
-          <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-            {displayData.map((r, i) => {
-              const p     = Number(r.percentage);
-              const color = p>=75?"#16a34a":p>=60?"#d97706":"#dc2626";
-              const bg    = p>=75?"#f0fdf4":p>=60?"#fffbeb":"#fef2f2";
-              return (
-                <div key={r.roll} className="stu-card" onClick={() => setSelectedStudent(r)}>
-                  <div style={{ display:"flex",alignItems:"center",gap:12 }}>
-                    <div style={{ width:36,height:36,borderRadius:8,background:"#eff6ff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,color:"#2563eb",fontSize:13,flexShrink:0 }}>{i+1}</div>
-                    <div>
-                      <div style={{ fontWeight:600,fontSize:14,color:"#1e293b" }}>{r.name}</div>
-                      <div style={{ fontSize:12,color:"#94a3b8" }}>{r.roll}</div>
+
+          {/* SUMMARY TAB */}
+          {activeTab === "summary" && (
+            <>
+              <div style={{ display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center" }}>
+                <input placeholder="🔍  Search by name or roll no..." value={search} onChange={e => setSearch(e.target.value)} style={{ flex:1,minWidth:180,height:36,border:"1px solid #cbd5e1",borderRadius:8,padding:"0 12px",fontSize:13,background:"#f8fafc" }}/>
+                <button className="act-btn" onClick={() => setShowDefaulters(!showDefaulters)} style={{ background:showDefaulters?"#dc2626":"#fef2f2",color:showDefaulters?"#fff":"#dc2626" }}>
+                  {showDefaulters ? "Show All" : `⚠ Defaulters (${defaulters.length})`}
+                </button>
+                <button className="act-btn" onClick={exportPDF}   style={{ background:"#dc2626",color:"#fff" }}>📄 PDF</button>
+                <button className="act-btn" onClick={exportExcel} style={{ background:"#16a34a",color:"#fff" }}>📊 Excel</button>
+              </div>
+              <div style={{ fontWeight:600,fontSize:13,color:"#475569",marginBottom:10 }}>
+                {deptCfg.emoji} {department} Dept — {YEAR_LABELS[year]} — {displayData.length} students
+              </div>
+              <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+                {displayData.map((r, i) => {
+                  const p     = Number(r.percentage);
+                  const color = p>=75?"#16a34a":p>=60?"#d97706":"#dc2626";
+                  const bg    = p>=75?"#f0fdf4":p>=60?"#fffbeb":"#fef2f2";
+                  return (
+                    <div key={r.roll} className="stu-card" onClick={() => setSelectedStudent(r)}>
+                      <div style={{ display:"flex",alignItems:"center",gap:12 }}>
+                        <div style={{ width:36,height:36,borderRadius:8,background:"#eff6ff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,color:"#2563eb",fontSize:13,flexShrink:0 }}>{i+1}</div>
+                        <div>
+                          <div style={{ fontWeight:600,fontSize:14,color:"#1e293b" }}>{r.name}</div>
+                          <div style={{ fontSize:12,color:"#94a3b8" }}>{r.roll}</div>
+                        </div>
+                      </div>
+                      <div style={{ display:"flex",alignItems:"center",gap:12 }}>
+                        <div style={{ textAlign:"center" }}>
+                          <div style={{ fontSize:10,color:"#94a3b8" }}>P / A / T</div>
+                          <div style={{ fontSize:13,fontWeight:600,color:"#475569" }}>{r.present} / {r.absent} / {r.total}</div>
+                        </div>
+                        <div style={{ background:bg,color,borderRadius:8,padding:"6px 14px",fontWeight:700,fontSize:15,minWidth:62,textAlign:"center" }}>{p}%</div>
+                        <span style={{ color:"#94a3b8",fontSize:18 }}>›</span>
+                      </div>
                     </div>
-                  </div>
-                  <div style={{ display:"flex",alignItems:"center",gap:12 }}>
-                    <div style={{ textAlign:"center" }}>
-                      <div style={{ fontSize:10,color:"#94a3b8" }}>P / A / T</div>
-                      <div style={{ fontSize:13,fontWeight:600,color:"#475569" }}>{r.present} / {r.absent} / {r.total}</div>
-                    </div>
-                    <div style={{ background:bg,color,borderRadius:8,padding:"6px 14px",fontWeight:700,fontSize:15,minWidth:62,textAlign:"center" }}>{p}%</div>
-                    <span style={{ color:"#94a3b8",fontSize:18 }}>›</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {/* REGISTER TAB */}
+          {activeTab === "register" && (
+            <RegisterView
+              rawRecords={rawRecords}
+              report={report}
+              department={department}
+              year={year}
+              fromDate={fromDate}
+              toDate={toDate}
+              staffSubjects={roleInfo.staffSubjects}
+            />
+          )}
         </>
       )}
 
@@ -794,7 +1144,7 @@ const Reports = () => {
           fromDate={fromDate}
           toDate={toDate}
           rawRecords={rawRecords}
-          staffSubjects={roleInfo.staffSubjects} // ← pass to modal
+          staffSubjects={roleInfo.staffSubjects}
         />
       )}
       {subjectFilter && (
